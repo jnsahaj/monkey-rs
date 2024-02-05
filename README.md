@@ -1,5 +1,5 @@
 # An Interpreter for monkey, written in Rust
-Inspired by Thorsten Ball's [interpreterbook.com](https://interpreterbook.com) "Writing an Interpreter in Go" where he writes an tree-walking Interpreter from scratch using Go, without any third-party libraries, for a modern programming language "monkey".
+Inspired by Thorsten Ball's [interpreterbook.com](https://interpreterbook.com) "Writing an Interpreter in Go" where he writes a tree-walking Interpreter from scratch using Go, without any third-party libraries, for a modern programming language "monkey".
 
 This was my first exposure to Go, and one of my first major undertakings in Rust. While the primary goal was to get good at Rust, learning about how compilers and interpreters work has left me with profound knowledge applicable immediately. 
 
