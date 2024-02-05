@@ -266,7 +266,6 @@ mod test_lexer {
             Token::Int(9),
             Token::Semicolon,
             Token::Eof,
-            Token::Eof,
         ];
 
         assert_expected_output(input, &expected);
