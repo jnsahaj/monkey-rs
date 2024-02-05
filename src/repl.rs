@@ -1,10 +1,15 @@
-use std::io::{self, Write};
+use std::{
+    io::{self, Write},
+    rc::Rc,
+};
 
-use crate::{evaluator::Evaluator, lexer::Lexer, parser::Parser};
+use crate::{evaluator::Evaluator, lexer::Lexer, object::environment::Environment, parser::Parser};
 
 const PROMPT: &'static str = ">> ";
 
 pub fn start() {
+    let env = Environment::new();
+
     loop {
         print!("{}", PROMPT);
         io::stdout().flush().unwrap();
@@ -20,7 +25,7 @@ pub fn start() {
         let program = parser.parse_program();
         parser.check_errors();
 
-        let result = Evaluator::eval(program);
+        let result = Evaluator::eval(program, Rc::clone(&env));
 
         println!("{}", result);
     }

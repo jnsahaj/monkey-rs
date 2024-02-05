@@ -1,14 +1,26 @@
 use std::fmt::Display;
 
-use crate::evaluator::EvaluatorError;
+use crate::{
+    ast::{csv_str, BlockStatement, Expression},
+    evaluator::EvaluatorError,
+};
 
-#[derive(Debug, PartialEq, Eq)]
+use self::environment::MutEnv;
+
+pub mod environment;
+
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub enum Object {
     Integer(i32),
     Boolean(bool),
     Null,
     Return(Box<Object>),
     Error(EvaluatorError),
+    Function {
+        parameters: Vec<Expression>,
+        body: BlockStatement,
+        env: MutEnv,
+    },
 }
 
 impl Object {
@@ -29,6 +41,11 @@ impl Display for Object {
             Object::Null => write!(f, "null"),
             Object::Return(object) => write!(f, "{}", object),
             Object::Error(err) => write!(f, "ERROR: {}", err),
+            Object::Function {
+                parameters,
+                body,
+                env: _,
+            } => write!(f, "fn({}) {{\n{}\n}}", csv_str(parameters), body),
         }
     }
 }

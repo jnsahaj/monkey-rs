@@ -13,7 +13,7 @@ impl Display for Program {
     }
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub enum Statement {
     Let { name: String, value: Expression },
     Return { value: Expression },
@@ -30,7 +30,7 @@ impl Display for Statement {
     }
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub enum Expression {
     Identifier(String),
     Integer(i32),
@@ -82,14 +82,14 @@ impl Display for Expression {
     }
 }
 
-fn csv_str<T: Display>(arr: &[T]) -> String {
+pub fn csv_str<T: Display>(arr: &[T]) -> String {
     arr.iter()
         .map(|e| e.to_string())
         .collect::<Vec<String>>()
         .join(", ")
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct BlockStatement {
     pub statements: Vec<Statement>,
 }
