@@ -1,4 +1,4 @@
-use std::{error::Error, mem, vec};
+use std::{mem, vec};
 
 type R<T> = std::result::Result<T, ParserError>;
 
@@ -57,11 +57,11 @@ impl Parser {
     }
 
     pub fn parse_program(&mut self) -> Program {
-        let mut program = Program { statments: vec![] };
+        let mut program = Program { statements: vec![] };
 
         while self.cur_token != Token::Eof {
             match self.parse_statement() {
-                Ok(statement) => program.statments.push(statement),
+                Ok(statement) => program.statements.push(statement),
                 Err(err) => self.errors.push(err),
             }
 
@@ -131,7 +131,7 @@ mod test_parser_statements {
             println!("PARSER ERROR: {}", err);
         }
 
-        assert_eq!(program.statments.len(), 3);
+        assert_eq!(program.statements.len(), 3);
 
         let expected = vec![
             Statement::Let {
@@ -147,6 +147,6 @@ mod test_parser_statements {
             },
         ];
 
-        assert_eq!(expected, program.statments);
+        assert_eq!(expected, program.statements);
     }
 }
