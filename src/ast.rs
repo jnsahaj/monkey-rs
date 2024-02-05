@@ -11,12 +11,14 @@ pub struct Program {
 #[derive(Debug, PartialEq, Eq)]
 pub enum Statement {
     Let { name: String, value: Expression },
+    Return { value: Expression },
 }
 
 impl Node for Statement {
     fn get_token(&self) -> Token {
         match self {
-            Statement::Let { name, value } => Token::Let,
+            Statement::Let { name: _, value: _ } => Token::Let,
+            Statement::Return { value: _ } => Token::Return,
         }
     }
 }

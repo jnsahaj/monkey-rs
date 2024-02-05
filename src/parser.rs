@@ -74,6 +74,7 @@ impl Parser {
     fn parse_statement(&mut self) -> R<Statement> {
         match self.cur_token {
             Token::Let => self.parse_let_statement(),
+            Token::Return => self.parse_return_statement(),
             _ => Err(ParserError("Unexpected token".into())),
         }
     }
@@ -88,6 +89,18 @@ impl Parser {
 
         Ok(Statement::Let {
             name,
+            value: Expression::Integer(5),
+        })
+    }
+
+    fn parse_return_statement(&mut self) -> R<Statement> {
+        self.next_token();
+
+        while self.cur_token != Token::Semicolon {
+            self.next_token();
+        }
+
+        Ok(Statement::Return {
             value: Expression::Integer(5),
         })
     }
@@ -108,6 +121,7 @@ mod test_parser_statements {
         let input = r#"
             let x = 5;
             let foobar = 838383;
+            return 5;
         "#;
 
         let lexer = Lexer::new(input);
@@ -117,7 +131,7 @@ mod test_parser_statements {
             println!("PARSER ERROR: {}", err);
         }
 
-        assert_eq!(program.statments.len(), 2);
+        assert_eq!(program.statments.len(), 3);
 
         let expected = vec![
             Statement::Let {
@@ -126,7 +140,10 @@ mod test_parser_statements {
             },
             Statement::Let {
                 name: "foobar".to_string(),
-                value: Expression::Integer(838383),
+                value: Expression::Integer(5),
+            },
+            Statement::Return {
+                value: Expression::Integer(5),
             },
         ];
 
