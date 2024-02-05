@@ -1,5 +1,6 @@
 use crate::token::{lookup_identifier, Token};
 
+#[derive(Debug)]
 pub struct Lexer {
     input: String,
     position: usize,

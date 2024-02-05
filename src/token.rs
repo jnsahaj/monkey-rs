@@ -63,7 +63,7 @@ impl Display for Token {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> Result<(), std::fmt::Error> {
         match self {
             Token::Illegal(c) => f.write_str(&c.to_string()),
-            Token::Eof => f.write_str("\0"),
+            Token::Eof => f.write_str("EOF"),
             Token::Ident(s) => f.write_str(s),
             Token::Int(i) => f.write_str(&i.to_string()),
             // Token::Str(s) => write!(f, "\"{}\"", s),

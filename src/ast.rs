@@ -1,4 +1,4 @@
-use std::fmt::{write, Display};
+use std::fmt::Display;
 
 use crate::token::Token;
 
@@ -35,8 +35,17 @@ pub enum Expression {
     Identifier(String),
     Integer(i32),
     Prefix(Token, Box<Expression>),
-    Boolean(bool),
     Infix(Box<Expression>, Token, Box<Expression>),
+    Boolean(bool),
+    If {
+        condition: Box<Expression>,
+        consequence: BlockStatement,
+        alternative: Option<BlockStatement>,
+    },
+    Function {
+        parameters: Vec<Expression>,
+        body: BlockStatement,
+    },
 }
 
 impl Display for Expression {
@@ -45,8 +54,38 @@ impl Display for Expression {
             Expression::Identifier(name) => f.write_str(&name),
             Expression::Integer(value) => f.write_str(&value.to_string()),
             Expression::Prefix(token, expr) => write!(f, "({}{})", token, expr),
-            Expression::Boolean(b) => write!(f, "{}", b),
             Expression::Infix(e1, token, e2) => write!(f, "({} {} {})", e1, token, e2),
+            Expression::Boolean(b) => write!(f, "{}", b),
+            Expression::If {
+                condition,
+                consequence,
+                alternative,
+            } => match alternative {
+                Some(alt) => write!(f, "if {} {} else {}", condition, consequence, alt),
+                None => write!(f, "if {} {}", condition, consequence),
+            },
+            Expression::Function { parameters, body } => {
+                write!(f, "fn({}) {}", csv_str(parameters), body)
+            }
         }
+    }
+}
+
+fn csv_str<T: Display>(arr: &[T]) -> String {
+    arr.iter()
+        .map(|e| e.to_string())
+        .collect::<Vec<String>>()
+        .join(", ")
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct BlockStatement {
+    pub statements: Vec<Statement>,
+}
+
+impl Display for BlockStatement {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let s: String = self.statements.iter().map(|x| x.to_string()).collect();
+        f.write_str(&s)
     }
 }

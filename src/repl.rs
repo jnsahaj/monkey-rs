@@ -1,6 +1,6 @@
 use std::io::{self, Write};
 
-use crate::{lexer::Lexer, token::Token};
+use crate::{lexer::Lexer, parser::Parser};
 
 const PROMPT: &'static str = ">> ";
 
@@ -15,15 +15,11 @@ pub fn start() {
             .read_line(&mut buf)
             .expect("Failed to read input");
 
-        let mut lexer = Lexer::new(&buf);
+        let lexer = Lexer::new(&buf);
+        let mut parser = Parser::new(lexer);
+        let program = parser.parse_program();
 
-        loop {
-            let token = lexer.next_token();
-            if token == Token::Eof {
-                break;
-            }
-
-            println!("{:?}", token);
-        }
+        parser.check_errors();
+        println!("{}", program);
     }
 }
