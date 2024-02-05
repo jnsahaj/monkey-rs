@@ -37,6 +37,7 @@ pub enum Expression {
     Prefix(Token, Box<Expression>),
     Infix(Box<Expression>, Token, Box<Expression>),
     Boolean(bool),
+    Str(String),
     If {
         condition: Box<Expression>,
         consequence: BlockStatement,
@@ -60,6 +61,7 @@ impl Display for Expression {
             Expression::Prefix(token, expr) => write!(f, "({}{})", token, expr),
             Expression::Infix(e1, token, e2) => write!(f, "({} {} {})", e1, token, e2),
             Expression::Boolean(b) => write!(f, "{}", b),
+            Expression::Str(s) => write!(f, "\"{}\"", s),
             Expression::If {
                 condition,
                 consequence,

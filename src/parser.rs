@@ -175,6 +175,7 @@ impl Parser {
         match self.cur_token.clone() {
             Token::Ident(ident) => Ok(Expression::Identifier(ident)),
             Token::Int(value) => Ok(Expression::Integer(value)),
+            Token::Str(value) => Ok(Expression::Str(value)),
             Token::True => Ok(Expression::Boolean(true)),
             Token::False => Ok(Expression::Boolean(false)),
             Token::Bang => self.parse_prefix_expression(),
@@ -590,7 +591,7 @@ mod test_parser {
         let input = r#"
             fn() {};
             fn(x) {};
-            fn(x, y, z) {};";
+            fn(x, y, z) {};
         "#;
 
         let expected: Vec<Statement> = vec![
@@ -642,6 +643,17 @@ mod test_parser {
                     ),
                 ],
             },
+        }];
+
+        assert_expected_statements(input, expected);
+    }
+
+    #[test]
+    fn test_string_literal_expression() {
+        let input = r#""hello world""#;
+
+        let expected = vec![Statement::Expression {
+            value: Expression::Str("hello world".into()),
         }];
 
         assert_expected_statements(input, expected);

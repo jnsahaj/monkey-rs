@@ -116,7 +116,7 @@ impl Lexer {
             b']' => Token::RBracket,
             b'"' => {
                 let value = self.read_string();
-                Token::String(value)
+                Token::Str(value)
             }
             0 => Token::Eof,
             c if c.is_letter() => {
@@ -296,9 +296,9 @@ mod test_lexer {
        "#;
 
         let expected = [
-            Token::String("foobar".into()),
+            Token::Str("foobar".into()),
             Token::Semicolon,
-            Token::String("foo bar".into()),
+            Token::Str("foo bar".into()),
             Token::Semicolon,
         ];
 

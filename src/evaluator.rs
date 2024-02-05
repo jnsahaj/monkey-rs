@@ -93,6 +93,7 @@ impl Evaluator {
                 let arguments = Evaluator::eval_expressions(arguments, env)?;
                 Evaluator::apply_function(function, arguments)
             }
+            _ => todo!(),
         }
     }
 
