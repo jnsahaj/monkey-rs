@@ -1,10 +1,6 @@
-use std::fmt::Display;
+use std::fmt::{write, Display};
 
 use crate::token::Token;
-
-pub trait Node {
-    fn get_token(&self) -> Option<Token>;
-}
 
 pub struct Program {
     pub statements: Vec<Statement>,
@@ -24,16 +20,6 @@ pub enum Statement {
     Expression { value: Expression },
 }
 
-impl Node for Statement {
-    fn get_token(&self) -> Option<Token> {
-        match self {
-            Statement::Let { name: _, value: _ } => Some(Token::Let),
-            Statement::Return { value: _ } => Some(Token::Return),
-            Statement::Expression { value: _ } => None,
-        }
-    }
-}
-
 impl Display for Statement {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
@@ -48,15 +34,9 @@ impl Display for Statement {
 pub enum Expression {
     Identifier(String),
     Integer(i32),
-}
-
-impl Node for Expression {
-    fn get_token(&self) -> Option<Token> {
-        match self {
-            Expression::Identifier(value) => Some(Token::Ident(value.to_string())),
-            Expression::Integer(value) => Some(Token::Int(value.to_owned())),
-        }
-    }
+    Prefix(Token, Box<Expression>),
+    Boolean(bool),
+    Infix(Box<Expression>, Token, Box<Expression>),
 }
 
 impl Display for Expression {
@@ -64,6 +44,9 @@ impl Display for Expression {
         match self {
             Expression::Identifier(name) => f.write_str(&name),
             Expression::Integer(value) => f.write_str(&value.to_string()),
+            Expression::Prefix(token, expr) => write!(f, "({}{})", token, expr),
+            Expression::Boolean(b) => write!(f, "{}", b),
+            Expression::Infix(e1, token, e2) => write!(f, "({} {} {})", e1, token, e2),
         }
     }
 }
