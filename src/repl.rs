@@ -20,7 +20,7 @@ pub fn start() {
         let program = parser.parse_program();
         parser.check_errors();
 
-        let result = Evaluator::eval(program).unwrap();
+        let result = Evaluator::eval(program);
 
         println!("{}", result);
     }

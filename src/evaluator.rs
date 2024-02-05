@@ -1,34 +1,52 @@
+use std::fmt::Display;
+
 use crate::{
-    ast::{Expression, Program, Statement},
+    ast::{BlockStatement, Expression, Program, Statement},
     object::{Object, FALSE, NULL, TRUE},
     token::Token,
 };
 
 type R<T> = Result<T, EvaluatorError>;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct EvaluatorError(String);
+
+impl Display for EvaluatorError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&self.0)
+    }
+}
 
 pub struct Evaluator;
 
 impl Evaluator {
-    pub fn eval(program: Program) -> R<Object> {
+    pub fn eval(program: Program) -> Object {
         Evaluator::eval_statements(&program.statements)
     }
 
-    fn eval_statements(statements: &[Statement]) -> R<Object> {
+    fn eval_statements(statements: &[Statement]) -> Object {
         let mut result = NULL;
 
         for stmt in statements {
-            result = Evaluator::eval_statement(stmt)?;
+            let res = Evaluator::eval_statement(stmt);
+            if let Err(err) = res {
+                return Object::Error(err);
+            } else {
+                result = res.unwrap();
+            }
+
+            if let Object::Return(_) = result {
+                break;
+            }
         }
 
-        Ok(result)
+        result
     }
 
     fn eval_statement(statement: &Statement) -> R<Object> {
         match statement {
             Statement::Expression { value } => Evaluator::eval_expression(value),
+            Statement::Return { value } => Evaluator::eval_return_statement_expression(value),
             _ => todo!(),
         }
     }
@@ -45,6 +63,11 @@ impl Evaluator {
                 Evaluator::eval_expression(left)?,
                 Evaluator::eval_expression(right)?,
             ),
+            Expression::If {
+                condition,
+                consequence,
+                alternative,
+            } => Evaluator::eval_if_expression(&condition, consequence, alternative.as_ref()),
             _ => todo!(),
         }
     }
@@ -118,6 +141,41 @@ impl Evaluator {
 
         Ok(result)
     }
+
+    fn eval_if_expression(
+        condition: &Expression,
+        consequence: &BlockStatement,
+        alternative: Option<&BlockStatement>,
+    ) -> R<Object> {
+        let condition = Evaluator::eval_expression(condition)?;
+
+        if Evaluator::is_truthy(condition) {
+            Evaluator::eval_block_statement(consequence)
+        } else if let Some(alternative) = alternative {
+            Evaluator::eval_block_statement(alternative)
+        } else {
+            Ok(NULL)
+        }
+    }
+
+    fn eval_block_statement(block_statment: &BlockStatement) -> R<Object> {
+        Ok(Evaluator::eval_statements(&block_statment.statements))
+    }
+
+    fn is_truthy(condition: Object) -> bool {
+        match condition {
+            NULL => false,
+            TRUE => true,
+            FALSE => false,
+            _ => true,
+        }
+    }
+
+    fn eval_return_statement_expression(expression: &Expression) -> R<Object> {
+        Ok(Object::Return(Box::new(Evaluator::eval_expression(
+            expression,
+        )?)))
+    }
 }
 
 #[cfg(test)]
@@ -136,7 +194,7 @@ mod test_evaluator {
 
     fn assert_expected_object(input: &str, expected: Object) {
         let program = setup(input);
-        let result = Evaluator::eval(program).unwrap();
+        let result = Evaluator::eval(program);
 
         assert_eq!(result, expected)
     }
@@ -202,6 +260,42 @@ mod test_evaluator {
             ("!!true", TRUE),
             ("!!false", FALSE),
             ("!!5", TRUE),
+        ];
+
+        check_tests(tests);
+    }
+
+    #[test]
+    fn test_eval_if_else_expression() {
+        let tests = vec![
+            ("if (true) { 10 }", Object::Integer(10)),
+            ("if (false) { 10 }", NULL),
+            ("if (1) { 10 }", Object::Integer(10)),
+            ("if (1 < 2) { 10 }", Object::Integer(10)),
+            ("if (1 > 2) { 10 }", NULL),
+            ("if (1 > 2) { 10 } else { 20 }", Object::Integer(20)),
+            ("if (1 < 2) { 10 } else { 20 }", Object::Integer(10)),
+        ];
+
+        check_tests(tests);
+    }
+
+    #[test]
+    fn test_eval_return_statement() {
+        let tests = vec![
+            ("return 10;", Object::Return(Box::new(Object::Integer(10)))),
+            (
+                "return 10; 9;",
+                Object::Return(Box::new(Object::Integer(10))),
+            ),
+            (
+                "return 2 * 5; 9;",
+                Object::Return(Box::new(Object::Integer(10))),
+            ),
+            (
+                "9; return 2 * 5; 9;",
+                Object::Return(Box::new(Object::Integer(10))),
+            ),
         ];
 
         check_tests(tests);
