@@ -31,6 +31,7 @@ pub enum Precedence {
     Sum = 4,         // +
     Product = 5,     // *
     Prefix = 6,      // -X or !X
+    Call = 7,        // call(x)
 }
 
 impl Precedence {
@@ -40,6 +41,7 @@ impl Precedence {
             Token::Lt | Token::Gt => Precedence::LessGreater,
             Token::Plus | Token::Minus => Precedence::Sum,
             Token::Asterisk | Token::Slash => Precedence::Product,
+            Token::LParen => Precedence::Call,
             _ => Precedence::Lowest,
         }
     }
@@ -197,6 +199,7 @@ impl Parser {
             | Token::Gt
             | Token::Eq
             | Token::NotEq => self.parse_infix_expression(left_expr),
+            Token::LParen => self.parse_call_expression(left_expr),
             other => Err(ParserError(format!(
                 "No infix parse function found for {}",
                 other
@@ -314,6 +317,41 @@ impl Parser {
 
         Ok(BlockStatement { statements })
     }
+
+    fn parse_call_expression(&mut self, left_expr: Box<Expression>) -> R<Expression> {
+        let arguments = self.parse_call_arguments()?;
+        Ok(Expression::Call {
+            function: left_expr,
+            arguments,
+        })
+    }
+
+    fn parse_call_arguments(&mut self) -> R<Vec<Expression>> {
+        let mut args: Vec<Expression> = vec![];
+
+        if self.peek_token == Token::RParen {
+            self.next_token();
+            return Ok(args);
+        };
+
+        self.next_token();
+
+        loop {
+            let arg = self.parse_expression(Precedence::Lowest)?;
+            args.push(arg);
+
+            if self.peek_token == Token::Comma {
+                self.next_token();
+                self.next_token();
+            } else {
+                break;
+            }
+        }
+
+        expect_peek!(self, Token::RParen)?;
+
+        Ok(args)
+    }
 }
 
 #[cfg(test)]
@@ -335,14 +373,14 @@ mod test_parser {
         let program = setup(input);
 
         assert_eq!(program.statements.len(), expected.len());
-        assert_eq!(expected, program.statements);
+        assert_eq!(program.statements, expected);
     }
 
     #[test]
     fn test_let_statements() {
         let input = r#"
             let x = 5;
-            let foobar = 838383;
+            let foobar = 838383 + 6;
             return 5;
         "#;
 
@@ -353,7 +391,11 @@ mod test_parser {
             },
             Statement::Let {
                 name: "foobar".to_string(),
-                value: Expression::Integer(838383),
+                value: Expression::Infix(
+                    Box::new(Expression::Integer(838383)),
+                    Token::Plus,
+                    Box::new(Expression::Integer(6)),
+                ),
             },
             Statement::Return {
                 value: Expression::Integer(5),
@@ -451,6 +493,15 @@ mod test_parser {
             ("2 / (5 + 5)", "(2 / (5 + 5))"),
             ("-(5 + 5)", "(-(5 + 5))"),
             ("!(true == true)", "(!(true == true))"),
+            ("a + add(b * c) + d", "((a + add((b * c))) + d)"),
+            (
+                "add(a, b, 1, 2 * 3, 4 + 5, add(6, 7 * 8))",
+                "add(a, b, 1, (2 * 3), (4 + 5), add(6, (7 * 8)))",
+            ),
+            (
+                "add(a + b + c * d / f + g)",
+                "add((((a + b) + ((c * d) / f)) + g))",
+            ),
         ];
 
         for (input, expected) in inputs {
@@ -566,6 +617,32 @@ mod test_parser {
                 },
             },
         ];
+
+        assert_expected_statements(input, expected);
+    }
+
+    #[test]
+    fn test_call_parsing() {
+        let input = "add(1, 2 * 3, 4 + 5)";
+
+        let expected = vec![Statement::Expression {
+            value: Expression::Call {
+                function: Box::new(Expression::Identifier("add".to_string())),
+                arguments: vec![
+                    Expression::Integer(1),
+                    Expression::Infix(
+                        Box::new(Expression::Integer(2)),
+                        Token::Asterisk,
+                        Box::new(Expression::Integer(3)),
+                    ),
+                    Expression::Infix(
+                        Box::new(Expression::Integer(4)),
+                        Token::Plus,
+                        Box::new(Expression::Integer(5)),
+                    ),
+                ],
+            },
+        }];
 
         assert_expected_statements(input, expected);
     }

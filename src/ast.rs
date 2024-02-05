@@ -46,6 +46,10 @@ pub enum Expression {
         parameters: Vec<Expression>,
         body: BlockStatement,
     },
+    Call {
+        function: Box<Expression>,
+        arguments: Vec<Expression>,
+    },
 }
 
 impl Display for Expression {
@@ -66,6 +70,13 @@ impl Display for Expression {
             },
             Expression::Function { parameters, body } => {
                 write!(f, "fn({}) {}", csv_str(parameters), body)
+            }
+
+            Expression::Call {
+                function,
+                arguments,
+            } => {
+                write!(f, "{}({})", function, csv_str(arguments))
             }
         }
     }
