@@ -3,6 +3,7 @@ use std::{fmt::Display, rc::Rc};
 use crate::{
     ast::{BlockStatement, Expression, Program, Statement},
     object::{
+        builtin,
         environment::{Environment, MutEnv},
         Object, FALSE, NULL, TRUE,
     },
@@ -12,7 +13,7 @@ use crate::{
 type R<T> = Result<T, EvaluatorError>;
 
 #[derive(Debug, PartialEq, Eq, Clone)]
-pub struct EvaluatorError(String);
+pub struct EvaluatorError(pub String);
 
 impl Display for EvaluatorError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -93,6 +94,7 @@ impl Evaluator {
                 let arguments = Evaluator::eval_expressions(arguments, env)?;
                 Evaluator::apply_function(function, arguments)
             }
+            Expression::Str(s) => Ok(Object::Str(s.clone())),
             _ => todo!(),
         }
     }
@@ -162,6 +164,15 @@ impl Evaluator {
                     )))
                 }
             },
+            (Object::Str(l), Object::Str(r)) => match operator {
+                Token::Plus => Object::Str(l + &r),
+                other => {
+                    return Err(EvaluatorError(format!(
+                        "Unknown operator for infix: {}",
+                        other
+                    )))
+                }
+            },
 
             (l, r) => {
                 return Err(EvaluatorError(format!(
@@ -220,9 +231,15 @@ impl Evaluator {
     }
 
     fn eval_identifier(name: &str, env: MutEnv) -> R<Object> {
-        env.borrow()
-            .get(name)
-            .ok_or(EvaluatorError(format!("Identifier not found: {}", name)))
+        if let Some(o) = env.borrow().get(name) {
+            return Ok(o);
+        }
+
+        if let Some(f) = builtin::get(name) {
+            return Ok(Object::Builtin(name.into(), f));
+        }
+
+        Err(EvaluatorError(format!("Identifier not found: {}", name)))
     }
 
     fn eval_function_literal(
@@ -250,6 +267,8 @@ impl Evaluator {
                 Object::Return(o) => Ok(*o),
                 o => Ok(o),
             }
+        } else if let Object::Builtin(_name, f) = function {
+            f(&arguments)
         } else {
             Err(EvaluatorError(format!("Not a function")))
         }
@@ -491,5 +510,43 @@ mod test_evaluator {
         let expected = Object::Integer(6);
 
         assert_expected_object(input, expected);
+    }
+
+    #[test]
+    fn test_string_literal() {
+        let input = r#""Hello World!""#;
+        let expected = Object::Str("Hello World!".into());
+
+        assert_expected_object(input, expected);
+    }
+
+    #[test]
+    fn test_string_concatenation() {
+        let input = r#""Hello" + " " + "World!""#;
+        let expected = Object::Str("Hello World!".into());
+
+        assert_expected_object(input, expected);
+    }
+
+    #[test]
+    fn test_builtin_functions() {
+        let tests = vec![
+            (r#"len("")"#, Object::Integer(0)),
+            (r#"len("hello")"#, Object::Integer(5)),
+            (
+                r#"len(1)"#,
+                Object::Error(EvaluatorError(
+                    "Argument to `len` not supported, got=1".into(),
+                )),
+            ),
+            (
+                r#"len("one", "two")"#,
+                Object::Error(EvaluatorError(
+                    "Wrong number of arguments to `len`. got=2, want=1".into(),
+                )),
+            ),
+        ];
+
+        check_tests(tests);
     }
 }

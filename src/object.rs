@@ -5,14 +5,16 @@ use crate::{
     evaluator::EvaluatorError,
 };
 
-use self::environment::MutEnv;
+use self::{builtin::BuiltinFunction, environment::MutEnv};
 
+pub mod builtin;
 pub mod environment;
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum Object {
     Integer(i32),
     Boolean(bool),
+    Str(String),
     Null,
     Return(Box<Object>),
     Error(EvaluatorError),
@@ -21,6 +23,7 @@ pub enum Object {
         body: BlockStatement,
         env: MutEnv,
     },
+    Builtin(String, BuiltinFunction),
 }
 
 impl Object {
@@ -38,6 +41,7 @@ impl Display for Object {
         match self {
             Object::Integer(i) => write!(f, "{}", i),
             Object::Boolean(b) => write!(f, "{}", b),
+            Object::Str(s) => write!(f, "\"{}\"", s),
             Object::Null => write!(f, "null"),
             Object::Return(object) => write!(f, "{}", object),
             Object::Error(err) => write!(f, "ERROR: {}", err),
@@ -46,6 +50,7 @@ impl Display for Object {
                 body,
                 env: _,
             } => write!(f, "fn({}) {{\n{}\n}}", csv_str(parameters), body),
+            Object::Builtin(b, ..) => write!(f, "built-in function: {}", b),
         }
     }
 }
