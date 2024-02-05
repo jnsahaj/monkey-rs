@@ -7,6 +7,16 @@ pub enum Object {
     Null,
 }
 
+impl Object {
+    pub fn from_native_bool(b: bool) -> Object {
+        if b {
+            TRUE
+        } else {
+            FALSE
+        }
+    }
+}
+
 impl Display for Object {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
