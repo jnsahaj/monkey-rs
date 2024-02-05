@@ -61,6 +61,18 @@ impl Lexer {
         self.input[start..self.position].parse().unwrap()
     }
 
+    fn read_string(&mut self) -> String {
+        let start = self.position + 1;
+        loop {
+            self.read_char();
+            if self.ch == b'"' || self.ch == 0 {
+                break;
+            }
+        }
+
+        self.input[start..self.position].into()
+    }
+
     fn skip_whitespace(&mut self) {
         while self.ch.is_ascii_whitespace() {
             self.read_char();
@@ -102,6 +114,10 @@ impl Lexer {
             b':' => Token::Colon,
             b'[' => Token::LBracket,
             b']' => Token::RBracket,
+            b'"' => {
+                let value = self.read_string();
+                Token::String(value)
+            }
             0 => Token::Eof,
             c if c.is_letter() => {
                 let literal = self.read_identifier();
@@ -267,6 +283,23 @@ mod test_lexer {
             Token::Int(9),
             Token::Semicolon,
             Token::Eof,
+        ];
+
+        assert_expected_output(input, &expected);
+    }
+
+    #[test]
+    fn test_next_token_4() {
+        let input = r#"
+            "foobar";
+            "foo bar";
+       "#;
+
+        let expected = [
+            Token::String("foobar".into()),
+            Token::Semicolon,
+            Token::String("foo bar".into()),
+            Token::Semicolon,
         ];
 
         assert_expected_output(input, &expected);
