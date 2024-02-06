@@ -51,6 +51,8 @@ pub enum Expression {
         function: Box<Expression>,
         arguments: Vec<Expression>,
     },
+    Array(Vec<Expression>),
+    Index(Box<Expression>, Box<Expression>),
 }
 
 impl Display for Expression {
@@ -80,6 +82,8 @@ impl Display for Expression {
             } => {
                 write!(f, "{}({})", function, csv_str(arguments))
             }
+            Expression::Array(v) => write!(f, "[{}]", csv_str(v)),
+            Expression::Index(left, right) => write!(f, "({}[{}])", left, right),
         }
     }
 }

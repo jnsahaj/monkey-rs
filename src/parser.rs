@@ -9,6 +9,15 @@ use crate::{
 };
 
 macro_rules! expect_peek {
+    ($parser:expr, $token:expr) => {{
+        let tok = $parser.peek_token.clone();
+        if $token == tok {
+            $parser.next_token();
+            Ok(())
+        } else {
+            Err(ParserError::from($token, tok))
+        }
+    }};
     ($parser:expr, $token:pat => $result:expr) => {{
         let tok = $parser.peek_token.clone();
         if let $token = tok {
@@ -32,6 +41,7 @@ pub enum Precedence {
     Product = 5,     // *
     Prefix = 6,      // -X or !X
     Call = 7,        // call(x)
+    Index = 8,       // arr[1]
 }
 
 impl Precedence {
@@ -42,6 +52,7 @@ impl Precedence {
             Token::Plus | Token::Minus => Precedence::Sum,
             Token::Asterisk | Token::Slash => Precedence::Product,
             Token::LParen => Precedence::Call,
+            Token::LBracket => Precedence::Index,
             _ => Precedence::Lowest,
         }
     }
@@ -183,6 +194,7 @@ impl Parser {
             Token::LParen => self.parse_grouped_expression(),
             Token::If => self.parse_if_expression(),
             Token::Function => self.parse_function_expression(),
+            Token::LBracket => self.parse_array_literal(),
             other => Err(ParserError(format!(
                 "No prefix parse function found for {}",
                 other
@@ -201,6 +213,7 @@ impl Parser {
             | Token::Eq
             | Token::NotEq => self.parse_infix_expression(left_expr),
             Token::LParen => self.parse_call_expression(left_expr),
+            Token::LBracket => self.parse_index_expression(left_expr),
             other => Err(ParserError(format!(
                 "No infix parse function found for {}",
                 other
@@ -353,6 +366,47 @@ impl Parser {
 
         Ok(args)
     }
+
+    fn parse_array_literal(&mut self) -> R<Expression> {
+        let elements = self.parse_expression_list(Token::RBracket)?;
+        Ok(Expression::Array(elements))
+    }
+
+    fn parse_expression_list(&mut self, end: Token) -> R<Vec<Expression>> {
+        let mut list: Vec<Expression> = vec![];
+
+        if self.peek_token == end {
+            self.next_token();
+            return Ok(list);
+        }
+
+        self.next_token();
+
+        loop {
+            let el = self.parse_expression(Precedence::Lowest)?;
+            list.push(el);
+
+            if self.peek_token == Token::Comma {
+                self.next_token();
+                self.next_token();
+            } else {
+                break;
+            }
+        }
+
+        expect_peek!(self, end)?;
+
+        Ok(list)
+    }
+
+    fn parse_index_expression(&mut self, left: Box<Expression>) -> R<Expression> {
+        self.next_token();
+        let expr = self.parse_expression(Precedence::Lowest)?;
+
+        expect_peek!(self, Token::RBracket)?;
+
+        Ok(Expression::Index(left, Box::new(expr)))
+    }
 }
 
 #[cfg(test)]
@@ -502,6 +556,14 @@ mod test_parser {
             (
                 "add(a + b + c * d / f + g)",
                 "add((((a + b) + ((c * d) / f)) + g))",
+            ),
+            (
+                "a * [1, 2, 3, 4][b * c] * d",
+                "((a * ([1, 2, 3, 4][(b * c)])) * d)",
+            ),
+            (
+                "add(a * b[2], b[1], 2 * [1, 2][1])",
+                "add((a * (b[2])), (b[1]), (2 * ([1, 2][1])))",
             ),
         ];
 
@@ -654,6 +716,43 @@ mod test_parser {
 
         let expected = vec![Statement::Expression {
             value: Expression::Str("hello world".into()),
+        }];
+
+        assert_expected_statements(input, expected);
+    }
+
+    #[test]
+    fn test_array_literals_parsing() {
+        let input = r"[1, 2 * 2, 3];";
+
+        let expected = vec![Statement::Expression {
+            value: Expression::Array(vec![
+                Expression::Integer(1),
+                Expression::Infix(
+                    Box::new(Expression::Integer(2)),
+                    Token::Asterisk,
+                    Box::new(Expression::Integer(2)),
+                ),
+                Expression::Integer(3),
+            ]),
+        }];
+
+        assert_expected_statements(input, expected);
+    }
+
+    #[test]
+    fn test_index_expression_parsing() {
+        let input = r"myArray[1 + 1]";
+
+        let expected = vec![Statement::Expression {
+            value: Expression::Index(
+                Box::new(Expression::Identifier("myArray".into())),
+                Box::new(Expression::Infix(
+                    Box::new(Expression::Integer(1)),
+                    Token::Plus,
+                    Box::new(Expression::Integer(1)),
+                )),
+            ),
         }];
 
         assert_expected_statements(input, expected);
