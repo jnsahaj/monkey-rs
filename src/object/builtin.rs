@@ -2,11 +2,15 @@ use std::fmt::Display;
 
 use crate::evaluator::EvaluatorError;
 
-use super::Object;
+use super::{Object, NULL};
 
 pub fn get(ident: &str) -> Option<BuiltinFunction> {
     match ident {
         "len" => Some(LEN),
+        "first" => Some(FIRST),
+        "last" => Some(LAST),
+        "rest" => Some(REST),
+        "push" => Some(PUSH),
         _ => None,
     }
 }
@@ -57,6 +61,7 @@ const LEN: BuiltinFunction = |objects| {
 
     match arg {
         Object::Str(s) => Ok(Object::Integer(s.len() as i32)),
+        Object::Array(elements) => Ok(Object::Integer(elements.len() as i32)),
         _ => Err(EvaluatorError(
             BuiltinErrors::ArgumentNotSupported {
                 name: "len".into(),
@@ -65,4 +70,123 @@ const LEN: BuiltinFunction = |objects| {
             .to_string(),
         )),
     }
+};
+
+const FIRST: BuiltinFunction = |objects| {
+    if objects.len() != 1 {
+        return Err(EvaluatorError(
+            BuiltinErrors::WrongNumberOfArguments {
+                name: "first".into(),
+                got: objects.len(),
+                want: 1,
+            }
+            .to_string(),
+        ));
+    };
+
+    let arg = &objects[0];
+
+    if let Object::Array(elements) = arg {
+        return Ok(match elements.first() {
+            Some(e) => e.clone(),
+            None => NULL,
+        });
+    }
+
+    Err(EvaluatorError(
+        BuiltinErrors::ArgumentNotSupported {
+            name: "first".into(),
+            arg: arg.to_string(),
+        }
+        .to_string(),
+    ))
+};
+
+const LAST: BuiltinFunction = |objects| {
+    if objects.len() != 1 {
+        return Err(EvaluatorError(
+            BuiltinErrors::WrongNumberOfArguments {
+                name: "last".into(),
+                got: objects.len(),
+                want: 1,
+            }
+            .to_string(),
+        ));
+    };
+
+    let arg = &objects[0];
+
+    if let Object::Array(elements) = arg {
+        return Ok(match elements.last() {
+            Some(e) => e.clone(),
+            None => NULL,
+        });
+    }
+
+    Err(EvaluatorError(
+        BuiltinErrors::ArgumentNotSupported {
+            name: "last".into(),
+            arg: arg.to_string(),
+        }
+        .to_string(),
+    ))
+};
+
+const REST: BuiltinFunction = |objects| {
+    if objects.len() != 1 {
+        return Err(EvaluatorError(
+            BuiltinErrors::WrongNumberOfArguments {
+                name: "rest".into(),
+                got: objects.len(),
+                want: 1,
+            }
+            .to_string(),
+        ));
+    };
+
+    let arg = &objects[0];
+
+    if let Object::Array(elements) = arg {
+        return Ok(match elements.is_empty() {
+            true => NULL,
+            false => Object::Array(elements.to_owned().into_iter().skip(1).collect()),
+        });
+    }
+
+    Err(EvaluatorError(
+        BuiltinErrors::ArgumentNotSupported {
+            name: "rest".into(),
+            arg: arg.to_string(),
+        }
+        .to_string(),
+    ))
+};
+
+const PUSH: BuiltinFunction = |objects| {
+    if objects.len() != 2 {
+        return Err(EvaluatorError(
+            BuiltinErrors::WrongNumberOfArguments {
+                name: "push".into(),
+                got: objects.len(),
+                want: 2,
+            }
+            .to_string(),
+        ));
+    };
+
+    let arg = &objects[0];
+
+    if let Object::Array(elements) = arg {
+        let mut new_elements = elements.to_owned();
+        new_elements.push(objects[1].clone());
+        return Ok(Object::Array(new_elements));
+    }
+
+    Err(EvaluatorError(
+        BuiltinErrors::ArgumentNotSupported {
+            name: "push".into(),
+            arg: arg.to_string(),
+        }
+        .to_string(),
+    ))
 };

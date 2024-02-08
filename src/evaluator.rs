@@ -571,6 +571,76 @@ mod test_evaluator {
                     "Wrong number of arguments to `len`. got=2, want=1".into(),
                 )),
             ),
+            (r"len([1, 2, 3])", Object::Integer(3)),
+            (r"len([])", Object::Integer(0)),
+            (r"first([])", NULL),
+            (r"first([1, 2, 3])", Object::Integer(1)),
+            (
+                r#"first([1, 2, 3], [])"#,
+                Object::Error(EvaluatorError(
+                    "Wrong number of arguments to `first`. got=2, want=1".into(),
+                )),
+            ),
+            (
+                r#"first(1)"#,
+                Object::Error(EvaluatorError(
+                    "Argument to `first` not supported, got=1".into(),
+                )),
+            ),
+            (r"last([])", NULL),
+            (r"last([1, 2, 3])", Object::Integer(3)),
+            (
+                r#"last([1, 2, 3], [])"#,
+                Object::Error(EvaluatorError(
+                    "Wrong number of arguments to `last`. got=2, want=1".into(),
+                )),
+            ),
+            (
+                r#"last(1)"#,
+                Object::Error(EvaluatorError(
+                    "Argument to `last` not supported, got=1".into(),
+                )),
+            ),
+            (r"rest([])", NULL),
+            (
+                r"rest([1, 2, 3])",
+                Object::Array(vec![Object::Integer(2), Object::Integer(3)]),
+            ),
+            (
+                r#"rest([1, 2, 3], [])"#,
+                Object::Error(EvaluatorError(
+                    "Wrong number of arguments to `rest`. got=2, want=1".into(),
+                )),
+            ),
+            (
+                r#"rest(1)"#,
+                Object::Error(EvaluatorError(
+                    "Argument to `rest` not supported, got=1".into(),
+                )),
+            ),
+            (
+                r"push([])",
+                Object::Error(EvaluatorError(
+                    "Wrong number of arguments to `push`. got=1, want=2".into(),
+                )),
+            ),
+            (
+                r"push([1], 4)",
+                Object::Array(vec![Object::Integer(1), Object::Integer(4)]),
+            ),
+            (
+                r#"push([1], [1 + 1])"#,
+                Object::Array(vec![
+                    Object::Integer(1),
+                    Object::Array(vec![Object::Integer(2)]),
+                ]),
+            ),
+            (
+                r#"push(1, 1)"#,
+                Object::Error(EvaluatorError(
+                    "Argument to `push` not supported, got=1".into(),
+                )),
+            ),
         ];
 
         check_tests(tests);
