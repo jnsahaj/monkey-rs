@@ -24,6 +24,7 @@ pub enum Object {
         env: MutEnv,
     },
     Builtin(String, BuiltinFunction),
+    Array(Vec<Object>),
 }
 
 impl Object {
@@ -51,6 +52,7 @@ impl Display for Object {
                 env: _,
             } => write!(f, "fn({}) {{\n{}\n}}", csv_str(parameters), body),
             Object::Builtin(b, ..) => write!(f, "built-in function: {}", b),
+            Object::Array(e) => write!(f, "[{}]", csv_str(e)),
         }
     }
 }

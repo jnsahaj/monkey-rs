@@ -95,6 +95,15 @@ impl Evaluator {
                 Evaluator::apply_function(function, arguments)
             }
             Expression::Str(s) => Ok(Object::Str(s.clone())),
+            Expression::Array(elements) => {
+                let elements = Evaluator::eval_expressions(elements, env)?;
+                Ok(Object::Array(elements))
+            }
+            Expression::Index(left, right) => {
+                let left = Evaluator::eval_expression(left, Rc::clone(&env))?;
+                let right = Evaluator::eval_expression(right, Rc::clone(&env))?;
+                Evaluator::eval_index_expression(left, right)
+            }
             _ => todo!(),
         }
     }
@@ -307,6 +316,23 @@ impl Evaluator {
         }
 
         Ok(result)
+    }
+
+    fn eval_index_expression(left: Object, index: Object) -> R<Object> {
+        match (&left, &index) {
+            (Object::Array(elements), Object::Integer(i)) => {
+                let max = elements.len() as i32 - 1;
+                if i < &0 || i > &max {
+                    return Ok(NULL);
+                }
+
+                Ok(elements[*i as usize].clone())
+            }
+            _ => Err(EvaluatorError(format!(
+                "Index operator not supported: {}",
+                left
+            ))),
+        }
     }
 }
 
@@ -545,6 +571,43 @@ mod test_evaluator {
                     "Wrong number of arguments to `len`. got=2, want=1".into(),
                 )),
             ),
+        ];
+
+        check_tests(tests);
+    }
+
+    #[test]
+    fn test_array_literals() {
+        let input = r"[1, 2 * 2, 3 + 3]";
+
+        let expected = Object::Array(vec![
+            Object::Integer(1),
+            Object::Integer(4),
+            Object::Integer(6),
+        ]);
+
+        assert_expected_object(input, expected);
+    }
+
+    #[test]
+    fn test_array_index() {
+        let tests = vec![
+            ("[1, 2, 3][0]", Object::Integer(1)),
+            ("[1, 2, 3][1]", Object::Integer(2)),
+            ("[1, 2, 3][2]", Object::Integer(3)),
+            ("let i = 0; [1][i];", Object::Integer(1)),
+            ("[1, 2, 3][1 + 1];", Object::Integer(3)),
+            ("let myArray = [1, 2, 3]; myArray[2];", Object::Integer(3)),
+            (
+                "let myArray = [1, 2, 3]; myArray[0] + myArray[1] + myArray[2];",
+                Object::Integer(6),
+            ),
+            (
+                "let myArray = [1, 2, 3]; let i = myArray[0]; myArray[i]",
+                Object::Integer(2),
+            ),
+            ("[1, 2, 3][3]", NULL),
+            ("[1, 2, 3][-1]", NULL),
         ];
 
         check_tests(tests);
