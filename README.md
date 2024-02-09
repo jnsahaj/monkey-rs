@@ -5,6 +5,19 @@ This was my first exposure to Go, and one of my first major undertakings in Rust
 
 This was also greatly helped by [NathanYee's implementation of monkey in Rust](https://github.com/NathanYee/monkey-rs/tree/master), which served as my primary reference to translate Go patterns into Rust. Although, I have tried to improve upon it in modest ways.
 
+## List of features
+- Integers
+- Booleans
+- Strings
+- Arrays
+- HashMaps
+- Prefix-, Infix- and Index operators
+- Conditionals
+- Global and local bindings
+- First-class functions
+- Return statements
+- Closures
+
 ## Usage
 Start the REPL
 ```bash
