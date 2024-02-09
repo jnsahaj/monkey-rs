@@ -11,6 +11,7 @@ pub fn get(ident: &str) -> Option<BuiltinFunction> {
         "last" => Some(LAST),
         "rest" => Some(REST),
         "push" => Some(PUSH),
+        "puts" => Some(PUTS),
         _ => None,
     }
 }
@@ -189,4 +190,12 @@ const PUSH: BuiltinFunction = |objects| {
         }
         .to_string(),
     ))
+};
+
+const PUTS: BuiltinFunction = |objects| {
+    for o in objects {
+        println!("{}", o);
+    }
+
+    Ok(NULL)
 };
