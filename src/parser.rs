@@ -195,6 +195,7 @@ impl Parser {
             Token::If => self.parse_if_expression(),
             Token::Function => self.parse_function_expression(),
             Token::LBracket => self.parse_array_literal(),
+            Token::LBrace => self.parse_hash_literal(),
             other => Err(ParserError(format!(
                 "No prefix parse function found for {}",
                 other
@@ -406,6 +407,39 @@ impl Parser {
         expect_peek!(self, Token::RBracket)?;
 
         Ok(Expression::Index(left, Box::new(expr)))
+    }
+
+    fn parse_hash_literal(&mut self) -> R<Expression> {
+        let mut pairs: Vec<(Expression, Expression)> = vec![];
+
+        if self.peek_token == Token::RBrace {
+            self.next_token();
+            return Ok(Expression::Hash(pairs));
+        }
+
+        self.next_token();
+
+        loop {
+            let k = self.parse_expression(Precedence::Lowest)?;
+
+            expect_peek!(self, Token::Colon)?;
+            self.next_token();
+
+            let v = self.parse_expression(Precedence::Lowest)?;
+
+            pairs.push((k, v));
+
+            if self.peek_token == Token::Comma {
+                self.next_token();
+                self.next_token();
+            } else {
+                break;
+            }
+        }
+
+        expect_peek!(self, Token::RBrace)?;
+
+        Ok(Expression::Hash(pairs))
     }
 }
 
@@ -754,6 +788,40 @@ mod test_parser {
                 )),
             ),
         }];
+
+        assert_expected_statements(input, expected);
+    }
+
+    #[test]
+    fn test_hash_literal_parsing() {
+        let input = r#"
+        { "one": 1, "two": 2 };
+        {};
+        let b = { "one": 0 + 1 }
+        "#;
+
+        let expected = vec![
+            Statement::Expression {
+                value: Expression::Hash(vec![
+                    (Expression::Str("one".into()), Expression::Integer(1)),
+                    (Expression::Str("two".into()), Expression::Integer(2)),
+                ]),
+            },
+            Statement::Expression {
+                value: Expression::Hash(vec![]),
+            },
+            Statement::Let {
+                name: "b".into(),
+                value: Expression::Hash(vec![(
+                    Expression::Str("one".into()),
+                    Expression::Infix(
+                        Box::new(Expression::Integer(0)),
+                        Token::Plus,
+                        Box::new(Expression::Integer(1)),
+                    ),
+                )]),
+            },
+        ];
 
         assert_expected_statements(input, expected);
     }

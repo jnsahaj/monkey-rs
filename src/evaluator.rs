@@ -1,4 +1,4 @@
-use std::{fmt::Display, rc::Rc};
+use std::{collections::HashMap, fmt::Display, rc::Rc};
 
 use crate::{
     ast::{BlockStatement, Expression, Program, Statement},
@@ -104,6 +104,7 @@ impl Evaluator {
                 let right = Evaluator::eval_expression(right, Rc::clone(&env))?;
                 Evaluator::eval_index_expression(left, right)
             }
+            Expression::Hash(pairs) => Ok(Evaluator::eval_hash_literal(pairs, Rc::clone(&env)))?,
             _ => todo!(),
         }
     }
@@ -328,16 +329,34 @@ impl Evaluator {
 
                 Ok(elements[*i as usize].clone())
             }
+            (Object::Hash(pairs), _) => match pairs.get(&index) {
+                Some(value) => Ok(value.clone()),
+                None => Ok(NULL),
+            },
             _ => Err(EvaluatorError(format!(
                 "Index operator not supported: {}",
                 left
             ))),
         }
     }
+
+    fn eval_hash_literal(pairs: &[(Expression, Expression)], env: MutEnv) -> R<Object> {
+        let mut map = HashMap::new();
+
+        for (k, v) in pairs {
+            let k = Evaluator::eval_expression(k, Rc::clone(&env))?;
+            let v = Evaluator::eval_expression(v, Rc::clone(&env))?;
+            map.insert(k, v);
+        }
+
+        Ok(Object::Hash(map))
+    }
 }
 
 #[cfg(test)]
 mod test_evaluator {
+    use std::{collections::HashMap, vec};
+
     use crate::{
         lexer::Lexer,
         object::{environment::Environment, Object},
@@ -678,6 +697,46 @@ mod test_evaluator {
             ),
             ("[1, 2, 3][3]", NULL),
             ("[1, 2, 3][-1]", NULL),
+        ];
+
+        check_tests(tests);
+    }
+
+    #[test]
+    fn test_hash_literals() {
+        let input = r#"
+        let two = "two";
+        {
+            "one": 10 - 9,
+            two: 1 + 1,
+            "thr" + "ee": 6 / 2,
+            4: 4,
+            true: 5,
+            false: 6
+        }
+        "#;
+
+        let expected = Object::Hash(HashMap::from([
+            (Object::Str("one".into()), Object::Integer(1)),
+            (Object::Str("two".into()), Object::Integer(2)),
+            (Object::Str("three".into()), Object::Integer(3)),
+            (Object::Integer(4), Object::Integer(4)),
+            (TRUE, Object::Integer(5)),
+            (FALSE, Object::Integer(6)),
+        ]));
+
+        assert_expected_object(input, expected);
+    }
+
+    #[test]
+    fn test_hash_index() {
+        let tests = vec![
+            (r#"{ "foo": 5 }["foo"]"#, Object::Integer(5)),
+            (r#"{ "foo": 5 }["bar"]"#, NULL),
+            (r#"let key = "foo"; { "foo": 5 }[key]"#, Object::Integer(5)),
+            (r#"{}["foo"]"#, NULL),
+            (r#"{ 5: 5 }[5]"#, Object::Integer(5)),
+            (r#"{ true: 5 }[true]"#, Object::Integer(5)),
         ];
 
         check_tests(tests);

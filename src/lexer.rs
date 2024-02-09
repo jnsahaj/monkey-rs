@@ -157,6 +157,7 @@ mod test_lexer {
             };
             let result = add(five, ten);
             [1, 2];
+            { "foo": "bar" };
         "#;
 
         let expected = [
@@ -201,6 +202,12 @@ mod test_lexer {
             Token::Comma,
             Token::Int(2),
             Token::RBracket,
+            Token::Semicolon,
+            Token::LBrace,
+            Token::Str("foo".into()),
+            Token::Colon,
+            Token::Str("bar".into()),
+            Token::RBrace,
             Token::Semicolon,
             Token::Eof,
         ];

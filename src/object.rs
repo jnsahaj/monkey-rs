@@ -1,4 +1,8 @@
-use std::fmt::Display;
+use std::{
+    collections::HashMap,
+    fmt::{format, write, Display},
+    hash::{Hash, Hasher},
+};
 
 use crate::{
     ast::{csv_str, BlockStatement, Expression},
@@ -25,6 +29,7 @@ pub enum Object {
     },
     Builtin(String, BuiltinFunction),
     Array(Vec<Object>),
+    Hash(HashMap<Object, Object>),
 }
 
 impl Object {
@@ -53,6 +58,15 @@ impl Display for Object {
             } => write!(f, "fn({}) {{\n{}\n}}", csv_str(parameters), body),
             Object::Builtin(b, ..) => write!(f, "built-in function: {}", b),
             Object::Array(e) => write!(f, "[{}]", csv_str(e)),
+            Object::Hash(map) => write!(
+                f,
+                "{{ {} }}",
+                csv_str(
+                    &map.iter()
+                        .map(|(k, v)| format!("{}: {}", k, v))
+                        .collect::<Vec<_>>()
+                )
+            ),
         }
     }
 }
@@ -60,3 +74,14 @@ impl Display for Object {
 pub const NULL: Object = Object::Null;
 pub const TRUE: Object = Object::Boolean(true);
 pub const FALSE: Object = Object::Boolean(false);
+
+impl Hash for Object {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        match self {
+            Object::Integer(i) => i.hash(state),
+            Object::Boolean(b) => b.hash(state),
+            Object::Str(s) => s.hash(state),
+            _ => 0.hash(state),
+        }
+    }
+}

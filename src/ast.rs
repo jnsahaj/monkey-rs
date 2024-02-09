@@ -53,6 +53,7 @@ pub enum Expression {
     },
     Array(Vec<Expression>),
     Index(Box<Expression>, Box<Expression>),
+    Hash(Vec<(Expression, Expression)>),
 }
 
 impl Display for Expression {
@@ -84,6 +85,11 @@ impl Display for Expression {
             }
             Expression::Array(v) => write!(f, "[{}]", csv_str(v)),
             Expression::Index(left, right) => write!(f, "({}[{}])", left, right),
+            Expression::Hash(map) => {
+                let pairs: Vec<_> = map.iter().map(|(k, v)| format!("{}: {}", k, v)).collect();
+                let pairs = csv_str(&pairs);
+                write!(f, "{{ {} }}", pairs)
+            }
         }
     }
 }
