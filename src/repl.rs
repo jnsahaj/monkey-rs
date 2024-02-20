@@ -5,7 +5,7 @@ use std::{
 
 use crate::{evaluator::Evaluator, lexer::Lexer, object::environment::Environment, parser::Parser};
 
-const PROMPT: &'static str = ">> ";
+const PROMPT: &str = ">> ";
 
 pub fn start() {
     let env = Environment::new();

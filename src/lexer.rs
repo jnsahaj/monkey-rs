@@ -37,10 +37,7 @@ impl Lexer {
     }
 
     fn peek_char(&self) -> u8 {
-        match self.input.bytes().nth(self.read_position) {
-            Some(b) => b,
-            None => 0,
-        }
+        self.input.as_bytes().get(self.read_position).copied().unwrap_or(0)
     }
 
     fn read_identifier(&mut self) -> String {

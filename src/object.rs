@@ -1,6 +1,6 @@
 use std::{
     collections::HashMap,
-    fmt::{format, write, Display},
+    fmt::{Display},
     hash::{Hash, Hasher},
 };
 

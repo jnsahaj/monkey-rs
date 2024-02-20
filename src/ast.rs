@@ -1,6 +1,6 @@
 use std::fmt::Display;
 
-use crate::token::Token;
+use crate::{token::Token};
 
 pub struct Program {
     pub statements: Vec<Statement>,
@@ -59,7 +59,7 @@ pub enum Expression {
 impl Display for Expression {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Expression::Identifier(name) => f.write_str(&name),
+            Expression::Identifier(name) => f.write_str(name),
             Expression::Integer(value) => f.write_str(&value.to_string()),
             Expression::Prefix(token, expr) => write!(f, "({}{})", token, expr),
             Expression::Infix(e1, token, e2) => write!(f, "({} {} {})", e1, token, e2),

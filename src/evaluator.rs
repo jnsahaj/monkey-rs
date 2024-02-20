@@ -67,7 +67,7 @@ impl Evaluator {
                 Rc::clone(&env),
             ),
             Expression::Infix(left, operator, right) => Evaluator::eval_infix_expression(
-                &operator,
+                operator,
                 Evaluator::eval_expression(left, Rc::clone(&env))?,
                 Evaluator::eval_expression(right, Rc::clone(&env))?,
                 Rc::clone(&env),
@@ -77,7 +77,7 @@ impl Evaluator {
                 consequence,
                 alternative,
             } => Evaluator::eval_if_expression(
-                &condition,
+                condition,
                 consequence,
                 alternative.as_ref(),
                 Rc::clone(&env),
@@ -90,7 +90,7 @@ impl Evaluator {
                 function,
                 arguments,
             } => {
-                let function = Evaluator::eval_expression(&function, Rc::clone(&env))?;
+                let function = Evaluator::eval_expression(function, Rc::clone(&env))?;
                 let arguments = Evaluator::eval_expressions(arguments, env)?;
                 Evaluator::apply_function(function, arguments)
             }
@@ -280,7 +280,7 @@ impl Evaluator {
         } else if let Object::Builtin(_name, f) = function {
             f(&arguments)
         } else {
-            Err(EvaluatorError(format!("Not a function")))
+            Err(EvaluatorError("Not a function".to_string()))
         }
     }
 
@@ -368,9 +368,9 @@ mod test_evaluator {
     fn setup(input: &str) -> Program {
         let lexer = Lexer::new(input);
         let mut parser = Parser::new(lexer);
-        let program = parser.parse_program();
+        
 
-        program
+        parser.parse_program()
     }
 
     fn assert_expected_object(input: &str, expected: Object) {
