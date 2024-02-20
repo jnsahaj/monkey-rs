@@ -6,6 +6,9 @@ mod parser;
 mod repl;
 mod token;
 
+mod code;
+mod compiler;
+
 fn main() {
     repl::start();
 }
