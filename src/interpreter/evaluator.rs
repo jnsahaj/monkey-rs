@@ -1,19 +1,16 @@
 use std::{collections::HashMap, fmt::Display, rc::Rc};
 
-use crate::{
+use crate::common::{
     ast::{BlockStatement, Expression, Program, Statement},
     object::{
         builtin,
         environment::{Environment, MutEnv},
-        Object, FALSE, NULL, TRUE,
+        EvaluatorError, Object, FALSE, NULL, TRUE,
     },
     token::Token,
 };
 
 type R<T> = Result<T, EvaluatorError>;
-
-#[derive(Debug, PartialEq, Eq, Clone)]
-pub struct EvaluatorError(pub String);
 
 impl Display for EvaluatorError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -105,7 +102,6 @@ impl Evaluator {
                 Evaluator::eval_index_expression(left, right)
             }
             Expression::Hash(pairs) => Ok(Evaluator::eval_hash_literal(pairs, Rc::clone(&env)))?,
-            _ => todo!(),
         }
     }
 
@@ -357,7 +353,7 @@ impl Evaluator {
 mod test_evaluator {
     use std::{collections::HashMap, vec};
 
-    use crate::{
+    use crate::common::{
         lexer::Lexer,
         object::{environment::Environment, Object},
         parser::Parser,
@@ -368,7 +364,6 @@ mod test_evaluator {
     fn setup(input: &str) -> Program {
         let lexer = Lexer::new(input);
         let mut parser = Parser::new(lexer);
-        
 
         parser.parse_program()
     }

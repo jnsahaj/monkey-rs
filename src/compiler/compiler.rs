@@ -1,17 +1,22 @@
-use std::error::Error;
-
 use crate::{
-    ast::{Expression, Program, Statement},
-    code::{self, Instructions, Op},
-    object::Object,
-    token::Token,
+    common::ast::{Expression, Program, Statement},
+    common::object::Object,
+    common::token::Token,
 };
+
+use super::{code, code::Instructions, code::Op};
 
 type R<T> = Result<T, String>;
 
 pub struct Compiler {
     instructions: Instructions,
     constants: Vec<Object>,
+}
+
+impl Default for Compiler {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl Compiler {
@@ -71,8 +76,8 @@ impl Compiler {
 
     fn emit(&mut self, op: Op, operands: &[usize]) -> usize {
         let ins = code::make(op, operands);
-        let pos = self.add_instruction(ins);
-        pos
+        
+        self.add_instruction(ins)
     }
 
     fn add_instruction(&mut self, ins: Instructions) -> usize {
@@ -92,11 +97,9 @@ pub struct Bytecode {
 mod test_compiler {
     use std::vec;
 
-    use crate::{
-        code::{self, Op},
-        lexer::Lexer,
-        parser::Parser,
-    };
+    use super::code::{self, Op};
+
+    use crate::common::{lexer::Lexer, parser::Parser};
 
     use super::*;
 

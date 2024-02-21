@@ -1,4 +1,4 @@
-use crate::token::{lookup_identifier, Token};
+use super::token::{lookup_identifier, Token};
 
 #[derive(Debug)]
 pub struct Lexer {
@@ -37,7 +37,11 @@ impl Lexer {
     }
 
     fn peek_char(&self) -> u8 {
-        self.input.as_bytes().get(self.read_position).copied().unwrap_or(0)
+        self.input
+            .as_bytes()
+            .get(self.read_position)
+            .copied()
+            .unwrap_or(0)
     }
 
     fn read_identifier(&mut self) -> String {

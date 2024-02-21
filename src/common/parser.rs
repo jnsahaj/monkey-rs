@@ -2,7 +2,7 @@ use std::{fmt::Display, mem, vec};
 
 type R<T> = std::result::Result<T, ParserError>;
 
-use crate::{
+use super::{
     ast::{BlockStatement, Expression, Program, Statement},
     lexer::Lexer,
     token::Token,
@@ -445,7 +445,6 @@ impl Parser {
 
 #[cfg(test)]
 mod test_parser {
-    use crate::ast::{BlockStatement, Expression, Statement};
 
     use super::*;
 

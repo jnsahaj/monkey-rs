@@ -1,11 +1,10 @@
-use std::error::Error;
-
 use byteorder::{BigEndian, ByteOrder};
 
-use crate::{
+use crate::common::object::{Object, NULL};
+
+use super::{
     code::{Instructions, Op},
     compiler,
-    object::{Object, NULL},
 };
 
 const STACK_SIZE: usize = 2048;
@@ -29,7 +28,7 @@ impl Vm {
         }
     }
 
-    fn stack_top(&self) -> &Object {
+    pub fn stack_top(&self) -> &Object {
         if self.sp == 0 {
             return &NULL;
         }
@@ -39,7 +38,7 @@ impl Vm {
 
     fn push(&mut self, obj: Object) -> R<()> {
         if self.sp >= STACK_SIZE {
-            return Err(format!("Stack Overflow!"));
+            return Err("Stack Overflow!".to_string());
         }
 
         self.stack.push(obj);
@@ -54,11 +53,10 @@ impl Vm {
         Ok(obj.clone())
     }
 
-    fn run(&mut self) -> R<()> {
+    pub fn run(&mut self) -> R<()> {
         let mut ip: usize = 0;
         while ip < self.instructions.len() {
             let op: Op = self.instructions[ip].try_into()?;
-            dbg!(&op, &ip, &self.instructions);
 
             match op {
                 Op::Constant => {
@@ -91,8 +89,9 @@ impl Vm {
 mod test_vm {
     use std::vec;
 
-    use crate::{ast::Program, compiler::Compiler, lexer::Lexer, object::Object, parser::Parser};
+    use crate::common::{ast::Program, lexer::Lexer, object::Object, parser::Parser};
 
+    use super::compiler::Compiler;
     use super::*;
 
     struct VmTestCase {
@@ -116,7 +115,6 @@ mod test_vm {
             let bytecode = compiler.byte_code();
             let mut vm = Vm::new(bytecode);
             vm.run().unwrap();
-            dbg!(&vm.stack_top(), &vm.sp, &vm.stack);
 
             let stack_elem = vm.stack_top();
             assert_eq!(stack_elem, &t.expected);

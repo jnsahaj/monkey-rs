@@ -8,6 +8,12 @@ use byteorder::{BigEndian, ByteOrder};
 #[derive(Debug, Eq, PartialEq)]
 pub struct Instructions(pub Vec<u8>);
 
+impl Default for Instructions {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Instructions {
     pub fn new() -> Self {
         Instructions(vec![])
@@ -18,7 +24,7 @@ impl Instructions {
     }
 
     pub fn append(&mut self, ins: Instructions) {
-        let mut inner_vec = &mut self.0;
+        let inner_vec = &mut self.0;
         inner_vec.extend(ins.0.iter());
     }
 }

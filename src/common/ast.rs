@@ -1,6 +1,6 @@
 use std::fmt::Display;
 
-use crate::{token::Token};
+use super::token::Token;
 
 pub struct Program {
     pub statements: Vec<Statement>,

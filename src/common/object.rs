@@ -1,13 +1,13 @@
 use std::{
     collections::HashMap,
-    fmt::{Display},
+    fmt::Display,
     hash::{Hash, Hasher},
 };
 
-use crate::{
-    ast::{csv_str, BlockStatement, Expression},
-    evaluator::EvaluatorError,
-};
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub struct EvaluatorError(pub String);
+
+use super::ast::{csv_str, BlockStatement, Expression};
 
 use self::{builtin::BuiltinFunction, environment::MutEnv};
 

@@ -3,7 +3,8 @@ use std::{
     rc::Rc,
 };
 
-use crate::{evaluator::Evaluator, lexer::Lexer, object::environment::Environment, parser::Parser};
+use super::evaluator::Evaluator;
+use crate::common::{lexer::Lexer, object::environment::Environment, parser::Parser};
 
 const PROMPT: &str = ">> ";
 

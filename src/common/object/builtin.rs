@@ -1,6 +1,6 @@
 use std::fmt::Display;
 
-use crate::evaluator::EvaluatorError;
+use super::EvaluatorError;
 
 use super::{Object, NULL};
 
