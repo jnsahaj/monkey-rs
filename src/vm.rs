@@ -48,18 +48,36 @@ impl Vm {
         Ok(())
     }
 
+    fn pop(&mut self) -> R<Object> {
+        let obj = &self.stack.pop().ok_or("Stack Underflow!")?;
+        self.sp -= 1;
+        Ok(obj.clone())
+    }
+
     fn run(&mut self) -> R<()> {
         let mut ip: usize = 0;
-        while ip < self.instructions.len() - 1 {
-            let op: Op = self.instructions[ip].into();
+        while ip < self.instructions.len() {
+            let op: Op = self.instructions[ip].try_into()?;
+            dbg!(&op, &ip, &self.instructions);
 
             match op {
                 Op::Constant => {
                     let const_index = BigEndian::read_u16(&self.instructions[ip + 1..]) as usize;
-                    self.push(self.constants[const_index].clone()).unwrap();
+                    self.push(self.constants[const_index].clone())?;
                     ip += 2; // implicit that operand_width for OpConstant is 2
                 }
-                _ => todo!(),
+                Op::Add => {
+                    let right = self.pop()?;
+                    let left = self.pop()?;
+                    match (left, right) {
+                        (Object::Integer(l), Object::Integer(r)) => {
+                            self.push(Object::Integer(l + r))?;
+                        }
+                        (l, r) => {
+                            return Err(format!("Expected integers but got {} and {}", l, r));
+                        }
+                    }
+                }
             }
 
             ip += 1;
@@ -98,6 +116,7 @@ mod test_vm {
             let bytecode = compiler.byte_code();
             let mut vm = Vm::new(bytecode);
             vm.run().unwrap();
+            dbg!(&vm.stack_top(), &vm.sp, &vm.stack);
 
             let stack_elem = vm.stack_top();
             assert_eq!(stack_elem, &t.expected);
@@ -117,7 +136,7 @@ mod test_vm {
             },
             VmTestCase {
                 input: "1 + 2".into(),
-                expected: Object::Integer(2),
+                expected: Object::Integer(3),
             },
         ];
 

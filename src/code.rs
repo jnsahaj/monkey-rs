@@ -1,4 +1,7 @@
-use std::fmt::Display;
+use std::{
+    fmt::Display,
+    ops::{Index, RangeFrom},
+};
 
 use byteorder::{BigEndian, ByteOrder};
 
@@ -20,6 +23,22 @@ impl Instructions {
     }
 }
 
+impl Index<usize> for Instructions {
+    type Output = u8;
+
+    fn index(&self, index: usize) -> &Self::Output {
+        &self.0[index]
+    }
+}
+
+impl Index<RangeFrom<usize>> for Instructions {
+    type Output = [u8];
+
+    fn index(&self, index: RangeFrom<usize>) -> &Self::Output {
+        &self.0[index]
+    }
+}
+
 impl Display for Instructions {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let mut i = 0;
@@ -34,6 +53,7 @@ impl Display for Instructions {
                 "{:04} {}\n",
                 i,
                 match def.operand_widths.len() {
+                    0 => def.name,
                     1 => format!("{} {}", def.name, operands[0]),
                     _ => todo!(),
                 }
@@ -64,14 +84,28 @@ impl FromIterator<u8> for Instructions {
 type Opcode = u8;
 
 #[derive(Debug, Eq, PartialEq)]
+#[repr(u8)]
 pub enum Op {
     Constant,
+    Add,
+}
+
+impl TryFrom<u8> for Op {
+    type Error = String;
+    fn try_from(value: u8) -> Result<Self, Self::Error> {
+        match value {
+            0u8 => Ok(Op::Constant),
+            1u8 => Ok(Op::Add),
+            _ => todo!(),
+        }
+    }
 }
 
 impl Display for Op {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Op::Constant => write!(f, "OpConstant"),
+            Op::Add => write!(f, "OpAdd"),
         }
     }
 }
@@ -94,6 +128,7 @@ impl Definition {
             name: op.to_string(),
             operand_widths: match op {
                 Op::Constant => vec![2],
+                Op::Add => vec![],
             },
         }
     }
@@ -101,6 +136,7 @@ impl Definition {
     fn byte_lookup(op: &Opcode) -> Result<Self, String> {
         match op {
             0 => Ok(Self::lookup(&Op::Constant)),
+            1 => Ok(Self::lookup(&Op::Add)),
             _ => Err(format!("Cannot find opcode in definition: {}", op)),
         }
     }
@@ -114,6 +150,10 @@ pub fn make(op: Op, operands: &[usize]) -> Instructions {
 
     let mut instruction = vec![0; instruction_len as usize];
     instruction[0] = op.into();
+
+    if operands.is_empty() {
+        return Instructions(instruction);
+    }
 
     let mut offset = 1;
     for (operand, width) in operands.iter().zip(def.operand_widths.iter()) {
@@ -134,7 +174,7 @@ pub fn read_operands(def: &Definition, ins: &Instructions) -> (Vec<usize>, usize
 
     for (operand, width) in operands.iter_mut().zip(def.operand_widths.iter()) {
         *operand = match width {
-            2 => BigEndian::read_u16(&ins.0[offset..]) as usize,
+            2 => BigEndian::read_u16(&ins[offset..]) as usize,
             _ => todo!(),
         };
 
@@ -150,11 +190,14 @@ mod test_code {
 
     #[test]
     fn test_make() {
-        let tests = vec![(Op::Constant, [65534], [Op::Constant.into(), 255, 254])];
+        let tests: Vec<(Op, Vec<usize>, Vec<u8>)> = vec![
+            (Op::Constant, vec![65534], vec![0, 255, 254]),
+            (Op::Add, vec![], vec![1]),
+        ];
 
         for (op, operands, expected) in tests {
             let Instructions(ins) = make(op, &operands);
-            assert_eq!(ins, &expected);
+            assert_eq!(ins, expected);
         }
     }
 
@@ -178,12 +221,12 @@ mod test_code {
     #[test]
     fn test_instructions_string() {
         let instructions = vec![
-            make(Op::Constant, &[1]),
+            make(Op::Add, &[]),
             make(Op::Constant, &[2]),
             make(Op::Constant, &[65534]),
         ];
 
-        let expected = "0000 OpConstant 1\n0003 OpConstant 2\n0006 OpConstant 65534\n";
+        let expected = "0000 OpAdd\n0001 OpConstant 2\n0004 OpConstant 65534\n";
 
         assert_eq!(
             instructions

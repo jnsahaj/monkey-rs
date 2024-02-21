@@ -4,24 +4,25 @@ use crate::{
     ast::{Expression, Program, Statement},
     code::{self, Instructions, Op},
     object::Object,
+    token::Token,
 };
 
-type R<T> = Result<T, Box<dyn Error>>;
+type R<T> = Result<T, String>;
 
-struct Compiler {
+pub struct Compiler {
     instructions: Instructions,
     constants: Vec<Object>,
 }
 
 impl Compiler {
-    fn new() -> Self {
+    pub fn new() -> Self {
         Self {
             instructions: Instructions::new(),
             constants: vec![],
         }
     }
 
-    fn compile(&mut self, program: &Program) -> R<()> {
+    pub fn compile(&mut self, program: &Program) -> R<()> {
         for stmt in &program.statements {
             match stmt {
                 Statement::Expression { value } => self.compile_expression(value)?,
@@ -39,9 +40,16 @@ impl Compiler {
                 let ident = self.add_constant(integer);
                 self.emit(Op::Constant, &[ident]);
             }
-            Expression::Infix(left, _, right) => {
+            Expression::Infix(left, operator, right) => {
                 self.compile_expression(left)?;
                 self.compile_expression(right)?;
+
+                match operator {
+                    Token::Plus => {
+                        self.emit(Op::Add, &[]);
+                    }
+                    other => return Err(format!("Unknown operator: {}", other)),
+                }
             }
             _ => todo!(),
         }
@@ -54,7 +62,7 @@ impl Compiler {
         self.constants.len() - 1
     }
 
-    fn byte_code(self) -> Bytecode {
+    pub fn byte_code(self) -> Bytecode {
         Bytecode {
             instructions: self.instructions,
             constants: self.constants,
@@ -74,9 +82,10 @@ impl Compiler {
     }
 }
 
-struct Bytecode {
-    instructions: Instructions,
-    constants: Vec<Object>,
+#[derive(Debug)]
+pub struct Bytecode {
+    pub instructions: Instructions,
+    pub constants: Vec<Object>,
 }
 
 #[cfg(test)]
@@ -136,6 +145,7 @@ mod test_compiler {
             expected_instructions: vec![
                 code::make(Op::Constant, &[0]),
                 code::make(Op::Constant, &[1]),
+                code::make(Op::Add, &[]),
             ],
         }];
 
