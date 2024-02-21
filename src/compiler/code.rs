@@ -52,7 +52,7 @@ impl Display for Instructions {
         let mut s = String::new();
 
         while i < ins.len() {
-            let def = Definition::byte_lookup(&ins[i]).unwrap();
+            let def = Definition::lookup(&ins[i].try_into().unwrap());
             let (operands, read) = read_operands(&def, &Instructions(ins[i + 1..].to_vec()));
 
             s.push_str(&format!(
@@ -94,6 +94,10 @@ type Opcode = u8;
 pub enum Op {
     Constant,
     Add,
+    Pop,
+    Sub,
+    Mul,
+    Div,
 }
 
 impl TryFrom<u8> for Op {
@@ -102,7 +106,11 @@ impl TryFrom<u8> for Op {
         match value {
             0u8 => Ok(Op::Constant),
             1u8 => Ok(Op::Add),
-            _ => todo!(),
+            2u8 => Ok(Op::Pop),
+            3u8 => Ok(Op::Sub),
+            4u8 => Ok(Op::Mul),
+            5u8 => Ok(Op::Div),
+            _ => return Err(format!("OpCode doesn't match: {}", value)),
         }
     }
 }
@@ -112,6 +120,10 @@ impl Display for Op {
         match self {
             Op::Constant => write!(f, "OpConstant"),
             Op::Add => write!(f, "OpAdd"),
+            Op::Sub => write!(f, "OpSub"),
+            Op::Mul => write!(f, "OpMul"),
+            Op::Div => write!(f, "OpDiv"),
+            Op::Pop => write!(f, "OpPop"),
         }
     }
 }
@@ -135,15 +147,11 @@ impl Definition {
             operand_widths: match op {
                 Op::Constant => vec![2],
                 Op::Add => vec![],
+                Op::Sub => vec![],
+                Op::Mul => vec![],
+                Op::Div => vec![],
+                Op::Pop => vec![],
             },
-        }
-    }
-
-    fn byte_lookup(op: &Opcode) -> Result<Self, String> {
-        match op {
-            0 => Ok(Self::lookup(&Op::Constant)),
-            1 => Ok(Self::lookup(&Op::Add)),
-            _ => Err(format!("Cannot find opcode in definition: {}", op)),
         }
     }
 }
