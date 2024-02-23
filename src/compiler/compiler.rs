@@ -61,7 +61,14 @@ impl Compiler {
                     other => return Err(format!("Unknown operator: {}", other)),
                 };
             }
-            _ => todo!(),
+            Expression::Boolean(b) => {
+                let op = match b {
+                    true => Op::True,
+                    false => Op::False,
+                };
+                self.emit(op, None);
+            }
+            e => todo!("Expression not supported: {}", e),
         }
 
         Ok(())
@@ -199,6 +206,22 @@ mod test_compiler {
                 ],
             },
         ];
+
+        run_compiler_tests(tests);
+    }
+
+    #[test]
+    fn test_boolean_expressions() {
+        let tests = vec![CompilerTestCase {
+            input: "true; false".into(),
+            expected_constants: vec![],
+            expected_instructions: vec![
+                code::make(Op::True, None),
+                code::make(Op::Pop, None),
+                code::make(Op::False, None),
+                code::make(Op::Pop, None),
+            ],
+        }];
 
         run_compiler_tests(tests);
     }

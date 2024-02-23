@@ -102,6 +102,8 @@ pub enum Op {
     Sub,
     Mul,
     Div,
+    True,
+    False,
 }
 
 impl TryFrom<u8> for Op {
@@ -114,7 +116,9 @@ impl TryFrom<u8> for Op {
             3u8 => Ok(Op::Sub),
             4u8 => Ok(Op::Mul),
             5u8 => Ok(Op::Div),
-            _ => return Err(format!("OpCode doesn't match: {}", value)),
+            6u8 => Ok(Op::True),
+            7u8 => Ok(Op::False),
+            _ => return Err(format!("OpCode doesn't exist: {}", value)),
         }
     }
 }
@@ -128,6 +132,8 @@ impl Display for Op {
             Op::Mul => write!(f, "OpMul"),
             Op::Div => write!(f, "OpDiv"),
             Op::Pop => write!(f, "OpPop"),
+            Op::True => write!(f, "OpTrue"),
+            Op::False => write!(f, "OpFalse"),
         }
     }
 }
@@ -155,6 +161,8 @@ impl Definition {
                 Op::Mul => None,
                 Op::Div => None,
                 Op::Pop => None,
+                Op::True => None,
+                Op::False => None,
             },
         }
     }
@@ -253,9 +261,10 @@ mod test_code {
             make(Op::Add, None),
             make(Op::Constant, Some(&[2])),
             make(Op::Constant, Some(&[65534])),
+            make(Op::True, None),
         ];
 
-        let expected = "0000 OpAdd\n0001 OpConstant 2\n0004 OpConstant 65534\n";
+        let expected = "0000 OpAdd\n0001 OpConstant 2\n0004 OpConstant 65534\n0007 OpTrue\n";
 
         assert_eq!(
             instructions

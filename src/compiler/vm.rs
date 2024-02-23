@@ -1,6 +1,6 @@
 use byteorder::{BigEndian, ByteOrder};
 
-use crate::common::object::{Object, NULL};
+use crate::common::object::{Object, FALSE, NULL, TRUE};
 
 use super::{
     code::{Instructions, Op},
@@ -92,10 +92,12 @@ impl Vm {
                 op @ (Op::Add | Op::Sub | Op::Mul | Op::Div) => {
                     self.execute_binary_operation(op)?
                 }
+
                 Op::Pop => {
                     self.pop()?;
                 }
-                _ => todo!(),
+                Op::True => self.push(TRUE)?,
+                Op::False => self.push(FALSE)?,
             }
 
             ip += 1;
@@ -109,13 +111,14 @@ impl Vm {
 mod test_vm {
     use std::vec;
 
+    use crate::common::object::{FALSE, TRUE};
     use crate::common::{ast::Program, lexer::Lexer, object::Object, parser::Parser};
 
     use super::compiler::Compiler;
     use super::*;
 
-    struct VmTestCase {
-        input: String,
+    struct VmTestCase<'a> {
+        input: &'a str,
         expected: Object,
     }
 
@@ -145,56 +148,72 @@ mod test_vm {
     fn test_integer_arithmetic() {
         let tests = vec![
             VmTestCase {
-                input: "1".into(),
+                input: "1",
                 expected: Object::Integer(1),
             },
             VmTestCase {
-                input: "2".into(),
+                input: "2",
                 expected: Object::Integer(2),
             },
             VmTestCase {
-                input: "1 + 2".into(),
+                input: "1 + 2",
                 expected: Object::Integer(3),
             },
             VmTestCase {
-                input: "1 - 2".into(),
+                input: "1 - 2",
                 expected: Object::Integer(-1),
             },
             VmTestCase {
-                input: "1 * 2".into(),
+                input: "1 * 2",
                 expected: Object::Integer(2),
             },
             VmTestCase {
-                input: "4 / 2".into(),
+                input: "4 / 2",
                 expected: Object::Integer(2),
             },
             VmTestCase {
-                input: "50 / 2 * 2 + 10 - 5".into(),
+                input: "50 / 2 * 2 + 10 - 5",
                 expected: Object::Integer(55),
             },
             VmTestCase {
-                input: "5 * (2 + 10)".into(),
+                input: "5 * (2 + 10)",
                 expected: Object::Integer(60),
             },
             VmTestCase {
-                input: "5 + 5 + 5 + 5 - 10".into(),
+                input: "5 + 5 + 5 + 5 - 10",
                 expected: Object::Integer(10),
             },
             VmTestCase {
-                input: "2 * 2 * 2 * 2 * 2".into(),
+                input: "2 * 2 * 2 * 2 * 2",
                 expected: Object::Integer(32),
             },
             VmTestCase {
-                input: "5 * 2 + 10".into(),
+                input: "5 * 2 + 10",
                 expected: Object::Integer(20),
             },
             VmTestCase {
-                input: "5 + 2 * 10".into(),
+                input: "5 + 2 * 10",
                 expected: Object::Integer(25),
             },
             VmTestCase {
-                input: "5 * (2 + 10)".into(),
+                input: "5 * (2 + 10)",
                 expected: Object::Integer(60),
+            },
+        ];
+
+        run_vm_tests(tests);
+    }
+
+    #[test]
+    fn test_boolean_expressions() {
+        let tests = vec![
+            VmTestCase {
+                input: "true",
+                expected: TRUE,
+            },
+            VmTestCase {
+                input: "false",
+                expected: FALSE,
             },
         ];
 
