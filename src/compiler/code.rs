@@ -58,9 +58,13 @@ impl Display for Instructions {
             s.push_str(&format!(
                 "{:04} {}\n",
                 i,
-                match def.operand_widths.len() {
-                    0 => def.name,
-                    1 => format!("{} {}", def.name, operands[0]),
+                match def.operand_widths {
+                    None => def.name,
+                    Some(w) if w.len() == 1 => format!(
+                        "{} {}",
+                        def.name,
+                        operands.expect("operand is not None if operand_widths is Some")[0]
+                    ),
                     _ => todo!(),
                 }
             ));
@@ -137,7 +141,7 @@ impl From<Op> for Opcode {
 pub struct Definition {
     name: String,
     /// list of size of each operand (in order) in bytes
-    operand_widths: Vec<u8>,
+    operand_widths: Option<Vec<u8>>,
 }
 
 impl Definition {
@@ -145,32 +149,36 @@ impl Definition {
         Self {
             name: op.to_string(),
             operand_widths: match op {
-                Op::Constant => vec![2],
-                Op::Add => vec![],
-                Op::Sub => vec![],
-                Op::Mul => vec![],
-                Op::Div => vec![],
-                Op::Pop => vec![],
+                Op::Constant => Some(vec![2]),
+                Op::Add => None,
+                Op::Sub => None,
+                Op::Mul => None,
+                Op::Div => None,
+                Op::Pop => None,
             },
         }
     }
 }
 
-pub fn make(op: Op, operands: &[usize]) -> Instructions {
+pub fn make(op: Op, operands: Option<&[usize]>) -> Instructions {
     let def = Definition::lookup(&op);
 
+    if operands.is_none() {
+        debug_assert!(def.operand_widths.is_none());
+        return Instructions(vec![op.into()]);
+    }
+
+    let operands = operands.unwrap();
+    let operand_widths = def.operand_widths.unwrap();
+
     // total len of instruction in bytes
-    let instruction_len = 1 + def.operand_widths.iter().sum::<u8>();
+    let instruction_len = 1 + operand_widths.iter().sum::<u8>();
 
     let mut instruction = vec![0; instruction_len as usize];
     instruction[0] = op.into();
 
-    if operands.is_empty() {
-        return Instructions(instruction);
-    }
-
     let mut offset = 1;
-    for (operand, width) in operands.iter().zip(def.operand_widths.iter()) {
+    for (operand, width) in operands.iter().zip(operand_widths.iter()) {
         match width {
             2 => BigEndian::write_u16(&mut instruction[offset..], *operand as u16),
             _ => todo!(),
@@ -182,11 +190,20 @@ pub fn make(op: Op, operands: &[usize]) -> Instructions {
     Instructions(instruction)
 }
 
-pub fn read_operands(def: &Definition, ins: &Instructions) -> (Vec<usize>, usize) {
-    let mut operands = vec![0usize; def.operand_widths.len()];
+pub fn read_operands(def: &Definition, ins: &Instructions) -> (Option<Vec<usize>>, usize) {
+    let mut operands = match &def.operand_widths {
+        Some(ow) => vec![0usize; ow.len()],
+        None => return (None, 0),
+    };
+
     let mut offset = 0;
 
-    for (operand, width) in operands.iter_mut().zip(def.operand_widths.iter()) {
+    for (operand, width) in operands.iter_mut().zip(
+        def.operand_widths
+            .as_ref()
+            .expect("operand_widths is Some if operands is Some")
+            .iter(),
+    ) {
         *operand = match width {
             2 => BigEndian::read_u16(&ins[offset..]) as usize,
             _ => todo!(),
@@ -195,7 +212,7 @@ pub fn read_operands(def: &Definition, ins: &Instructions) -> (Vec<usize>, usize
         offset += *width as usize;
     }
 
-    (operands, offset)
+    (Some(operands), offset)
 }
 
 #[cfg(test)]
@@ -204,40 +221,38 @@ mod test_code {
 
     #[test]
     fn test_make() {
-        let tests: Vec<(Op, Vec<usize>, Vec<u8>)> = vec![
-            (Op::Constant, vec![65534], vec![0, 255, 254]),
-            (Op::Add, vec![], vec![1]),
+        let tests: Vec<(Op, Option<Vec<usize>>, Vec<u8>)> = vec![
+            (Op::Constant, Some(vec![65534]), vec![0, 255, 254]),
+            (Op::Add, None, vec![1]),
         ];
 
         for (op, operands, expected) in tests {
-            let Instructions(ins) = make(op, &operands);
+            let Instructions(ins) = make(op, operands.as_deref());
             assert_eq!(ins, expected);
         }
     }
 
     #[test]
     fn test_read_operands() {
-        let tests = vec![(Op::Constant, [65534], 2)];
+        let tests = vec![(Op::Constant, Some(vec![65534usize]), 2)];
 
         for (op, operands, bytes_read) in tests {
             let def = Definition::lookup(&op);
-            let Instructions(instruction) = make(op, &operands);
+            let Instructions(instruction) = make(op, operands.as_deref());
             let (operands_read, n) = read_operands(&def, &Instructions(instruction[1..].to_vec()));
 
             assert_eq!(n, bytes_read);
 
-            for (read_operand, want_operand) in operands_read.iter().zip(operands.iter()) {
-                assert_eq!(read_operand, want_operand);
-            }
+            assert_eq!(operands, operands_read);
         }
     }
 
     #[test]
     fn test_instructions_string() {
         let instructions = vec![
-            make(Op::Add, &[]),
-            make(Op::Constant, &[2]),
-            make(Op::Constant, &[65534]),
+            make(Op::Add, None),
+            make(Op::Constant, Some(&[2])),
+            make(Op::Constant, Some(&[65534])),
         ];
 
         let expected = "0000 OpAdd\n0001 OpConstant 2\n0004 OpConstant 65534\n";

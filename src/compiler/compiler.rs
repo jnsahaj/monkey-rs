@@ -32,7 +32,7 @@ impl Compiler {
             match stmt {
                 Statement::Expression { value } => {
                     self.compile_expression(value)?;
-                    self.emit(Op::Pop, &[]);
+                    self.emit(Op::Pop, None);
                 }
                 _ => todo!(),
             }
@@ -46,17 +46,17 @@ impl Compiler {
             Expression::Integer(i) => {
                 let integer = Object::Integer(*i);
                 let ident = self.add_constant(integer);
-                self.emit(Op::Constant, &[ident]);
+                self.emit(Op::Constant, Some(&[ident]));
             }
             Expression::Infix(left, operator, right) => {
                 self.compile_expression(left)?;
                 self.compile_expression(right)?;
 
                 let _ = match operator {
-                    Token::Plus => self.emit(Op::Add, &[]),
-                    Token::Minus => self.emit(Op::Sub, &[]),
-                    Token::Asterisk => self.emit(Op::Mul, &[]),
-                    Token::Slash => self.emit(Op::Div, &[]),
+                    Token::Plus => self.emit(Op::Add, None),
+                    Token::Minus => self.emit(Op::Sub, None),
+                    Token::Asterisk => self.emit(Op::Mul, None),
+                    Token::Slash => self.emit(Op::Div, None),
 
                     other => return Err(format!("Unknown operator: {}", other)),
                 };
@@ -79,7 +79,7 @@ impl Compiler {
         }
     }
 
-    fn emit(&mut self, op: Op, operands: &[usize]) -> usize {
+    fn emit(&mut self, op: Op, operands: Option<&[usize]>) -> usize {
         let ins = code::make(op, operands);
 
         self.add_instruction(ins)
@@ -152,50 +152,50 @@ mod test_compiler {
                 input: "1 + 2".into(),
                 expected_constants: vec![Object::Integer(1), Object::Integer(2)],
                 expected_instructions: vec![
-                    code::make(Op::Constant, &[0]),
-                    code::make(Op::Constant, &[1]),
-                    code::make(Op::Add, &[]),
-                    code::make(Op::Pop, &[]),
+                    code::make(Op::Constant, Some(&[0])),
+                    code::make(Op::Constant, Some(&[1])),
+                    code::make(Op::Add, None),
+                    code::make(Op::Pop, None),
                 ],
             },
             CompilerTestCase {
                 input: "1; 2".into(),
                 expected_constants: vec![Object::Integer(1), Object::Integer(2)],
                 expected_instructions: vec![
-                    code::make(Op::Constant, &[0]),
-                    code::make(Op::Pop, &[]),
-                    code::make(Op::Constant, &[1]),
-                    code::make(Op::Pop, &[]),
+                    code::make(Op::Constant, Some(&[0])),
+                    code::make(Op::Pop, None),
+                    code::make(Op::Constant, Some(&[1])),
+                    code::make(Op::Pop, None),
                 ],
             },
             CompilerTestCase {
                 input: "1 - 2".into(),
                 expected_constants: vec![Object::Integer(1), Object::Integer(2)],
                 expected_instructions: vec![
-                    code::make(Op::Constant, &[0]),
-                    code::make(Op::Constant, &[1]),
-                    code::make(Op::Sub, &[]),
-                    code::make(Op::Pop, &[]),
+                    code::make(Op::Constant, Some(&[0])),
+                    code::make(Op::Constant, Some(&[1])),
+                    code::make(Op::Sub, None),
+                    code::make(Op::Pop, None),
                 ],
             },
             CompilerTestCase {
                 input: "1 * 2".into(),
                 expected_constants: vec![Object::Integer(1), Object::Integer(2)],
                 expected_instructions: vec![
-                    code::make(Op::Constant, &[0]),
-                    code::make(Op::Constant, &[1]),
-                    code::make(Op::Mul, &[]),
-                    code::make(Op::Pop, &[]),
+                    code::make(Op::Constant, Some(&[0])),
+                    code::make(Op::Constant, Some(&[1])),
+                    code::make(Op::Mul, None),
+                    code::make(Op::Pop, None),
                 ],
             },
             CompilerTestCase {
                 input: "2 / 1".into(),
                 expected_constants: vec![Object::Integer(2), Object::Integer(1)],
                 expected_instructions: vec![
-                    code::make(Op::Constant, &[0]),
-                    code::make(Op::Constant, &[1]),
-                    code::make(Op::Div, &[]),
-                    code::make(Op::Pop, &[]),
+                    code::make(Op::Constant, Some(&[0])),
+                    code::make(Op::Constant, Some(&[1])),
+                    code::make(Op::Div, None),
+                    code::make(Op::Pop, None),
                 ],
             },
         ];
