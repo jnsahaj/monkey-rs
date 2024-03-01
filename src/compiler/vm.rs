@@ -53,10 +53,6 @@ impl Vm {
         Ok(obj.clone())
     }
 
-    fn last_popped_stack_elem(&self) -> &Object {
-        &self.stack[self.sp]
-    }
-
     fn execute_binary_operation(&mut self, op: Op) -> R<()> {
         let right = self.pop()?;
         let left = self.pop()?;
@@ -76,6 +72,54 @@ impl Vm {
         }
 
         Ok(())
+    }
+
+    fn execute_comparison(&mut self, op: Op) -> R<()> {
+        let right = self.pop()?;
+        let left = self.pop()?;
+
+        match (left, right) {
+            (Object::Integer(l), Object::Integer(r)) => {
+                self.push(match op {
+                    Op::GreaterThan => Object::from_native_bool(l > r),
+                    Op::NotEqual => Object::from_native_bool(l != r),
+                    Op::Equal => Object::from_native_bool(l == r),
+                    other => return Err(format!("Unknown integer operator: {}", other)),
+                })?;
+            }
+
+            (Object::Boolean(l), Object::Boolean(r)) => {
+                self.push(match op {
+                    Op::NotEqual => Object::from_native_bool(l != r),
+                    Op::Equal => Object::from_native_bool(l == r),
+                    other => return Err(format!("Unknown boolean operator: {}", other)),
+                })?;
+            }
+            (l, r) => {
+                return Err(format!("Comparison not supported for {} and {}", l, r));
+            }
+        }
+
+        Ok(())
+    }
+
+    fn execute_bang_operator(&mut self) -> R<()> {
+        let operand = self.pop()?;
+
+        Ok(match operand {
+            TRUE => self.push(FALSE)?,
+            FALSE => self.push(TRUE)?,
+            _ => self.push(FALSE)?,
+        })
+    }
+
+    fn execute_minus_operator(&mut self) -> R<()> {
+        let operand = self.pop()?;
+
+        Ok(match operand {
+            Object::Integer(i) => self.push(Object::Integer(-i))?,
+            other => return Err(format!("Unsupported type for negation: {}", other)),
+        })
     }
 
     pub fn run(&mut self) -> R<()> {
@@ -98,6 +142,10 @@ impl Vm {
                 }
                 Op::True => self.push(TRUE)?,
                 Op::False => self.push(FALSE)?,
+                op @ (Op::GreaterThan | Op::Equal | Op::NotEqual) => self.execute_comparison(op)?,
+                Op::Bang => self.execute_bang_operator()?,
+                Op::Minus => self.execute_minus_operator()?,
+                _ => todo!(),
             }
 
             ip += 1;
@@ -139,7 +187,10 @@ mod test_vm {
             let mut vm = Vm::new(bytecode);
             vm.run().unwrap();
 
-            let stack_elem = vm.last_popped_stack_elem();
+            let stack_elem = {
+                let this = &vm;
+                &this.stack[this.sp]
+            };
             assert_eq!(stack_elem, &t.expected);
         }
     }
@@ -199,6 +250,22 @@ mod test_vm {
                 input: "5 * (2 + 10)",
                 expected: Object::Integer(60),
             },
+            VmTestCase {
+                input: "-5",
+                expected: Object::Integer(-5),
+            },
+            VmTestCase {
+                input: "-10",
+                expected: Object::Integer(-10),
+            },
+            VmTestCase {
+                input: "-50 + 100 + -50",
+                expected: Object::Integer(0),
+            },
+            VmTestCase {
+                input: "(5 + 10 * 2 + 15 / 3) * 2 + -10",
+                expected: Object::Integer(50),
+            },
         ];
 
         run_vm_tests(tests);
@@ -214,6 +281,98 @@ mod test_vm {
             VmTestCase {
                 input: "false",
                 expected: FALSE,
+            },
+            VmTestCase {
+                input: "1 < 2",
+                expected: TRUE,
+            },
+            VmTestCase {
+                input: "1 > 2",
+                expected: FALSE,
+            },
+            VmTestCase {
+                input: "1 < 1",
+                expected: FALSE,
+            },
+            VmTestCase {
+                input: "1 > 1",
+                expected: FALSE,
+            },
+            VmTestCase {
+                input: "1 == 1",
+                expected: TRUE,
+            },
+            VmTestCase {
+                input: "1 != 1",
+                expected: FALSE,
+            },
+            VmTestCase {
+                input: "1 == 2",
+                expected: FALSE,
+            },
+            VmTestCase {
+                input: "1 != 2",
+                expected: TRUE,
+            },
+            VmTestCase {
+                input: "true == true",
+                expected: TRUE,
+            },
+            VmTestCase {
+                input: "false == false",
+                expected: TRUE,
+            },
+            VmTestCase {
+                input: "true == false",
+                expected: FALSE,
+            },
+            VmTestCase {
+                input: "true != false",
+                expected: TRUE,
+            },
+            VmTestCase {
+                input: "false != true",
+                expected: TRUE,
+            },
+            VmTestCase {
+                input: "(1 < 2) == true",
+                expected: TRUE,
+            },
+            VmTestCase {
+                input: "(1 < 2) == false",
+                expected: FALSE,
+            },
+            VmTestCase {
+                input: "(1 > 2) == true",
+                expected: FALSE,
+            },
+            VmTestCase {
+                input: "(1 > 2) == false",
+                expected: TRUE,
+            },
+            VmTestCase {
+                input: "!true",
+                expected: FALSE,
+            },
+            VmTestCase {
+                input: "!false",
+                expected: TRUE,
+            },
+            VmTestCase {
+                input: "!5",
+                expected: FALSE,
+            },
+            VmTestCase {
+                input: "!!true",
+                expected: TRUE,
+            },
+            VmTestCase {
+                input: "!!false",
+                expected: FALSE,
+            },
+            VmTestCase {
+                input: "!!5",
+                expected: TRUE,
             },
         ];
 

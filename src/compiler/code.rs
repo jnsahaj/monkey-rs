@@ -104,6 +104,11 @@ pub enum Op {
     Div,
     True,
     False,
+    Equal,
+    NotEqual,
+    GreaterThan,
+    Minus,
+    Bang,
 }
 
 impl TryFrom<u8> for Op {
@@ -118,6 +123,11 @@ impl TryFrom<u8> for Op {
             5u8 => Ok(Op::Div),
             6u8 => Ok(Op::True),
             7u8 => Ok(Op::False),
+            8u8 => Ok(Op::Equal),
+            9u8 => Ok(Op::NotEqual),
+            10u8 => Ok(Op::GreaterThan),
+            11u8 => Ok(Op::Minus),
+            12u8 => Ok(Op::Bang),
             _ => return Err(format!("OpCode doesn't exist: {}", value)),
         }
     }
@@ -134,6 +144,11 @@ impl Display for Op {
             Op::Pop => write!(f, "OpPop"),
             Op::True => write!(f, "OpTrue"),
             Op::False => write!(f, "OpFalse"),
+            Op::Equal => write!(f, "OpEqual"),
+            Op::NotEqual => write!(f, "OpNotEqual"),
+            Op::GreaterThan => write!(f, "OpGreaterThan"),
+            Op::Minus => write!(f, "OpMinus"),
+            Op::Bang => write!(f, "OpBang"),
         }
     }
 }
@@ -163,6 +178,11 @@ impl Definition {
                 Op::Pop => None,
                 Op::True => None,
                 Op::False => None,
+                Op::Equal => None,
+                Op::NotEqual => None,
+                Op::GreaterThan => None,
+                Op::Minus => None,
+                Op::Bang => None,
             },
         }
     }

@@ -49,6 +49,13 @@ impl Compiler {
                 self.emit(Op::Constant, Some(&[ident]));
             }
             Expression::Infix(left, operator, right) => {
+                if let Token::Lt = operator {
+                    self.compile_expression(right)?;
+                    self.compile_expression(left)?;
+                    self.emit(Op::GreaterThan, None);
+                    return Ok(());
+                }
+
                 self.compile_expression(left)?;
                 self.compile_expression(right)?;
 
@@ -57,7 +64,9 @@ impl Compiler {
                     Token::Minus => self.emit(Op::Sub, None),
                     Token::Asterisk => self.emit(Op::Mul, None),
                     Token::Slash => self.emit(Op::Div, None),
-
+                    Token::Gt => self.emit(Op::GreaterThan, None),
+                    Token::Eq => self.emit(Op::Equal, None),
+                    Token::NotEq => self.emit(Op::NotEqual, None),
                     other => return Err(format!("Unknown operator: {}", other)),
                 };
             }
@@ -67,6 +76,14 @@ impl Compiler {
                     false => Op::False,
                 };
                 self.emit(op, None);
+            }
+            Expression::Prefix(operator, expr) => {
+                self.compile_expression(expr)?;
+                let _ = match operator {
+                    Token::Bang => self.emit(Op::Bang, None),
+                    Token::Minus => self.emit(Op::Minus, None),
+                    other => return Err(format!("Unknown prefix operator: {}", other)),
+                };
             }
             e => todo!("Expression not supported: {}", e),
         }
@@ -205,6 +222,15 @@ mod test_compiler {
                     code::make(Op::Pop, None),
                 ],
             },
+            CompilerTestCase {
+                input: "-1".into(),
+                expected_constants: vec![Object::Integer(1)],
+                expected_instructions: vec![
+                    code::make(Op::Constant, Some(&[0])),
+                    code::make(Op::Minus, None),
+                    code::make(Op::Pop, None),
+                ],
+            },
         ];
 
         run_compiler_tests(tests);
@@ -212,16 +238,87 @@ mod test_compiler {
 
     #[test]
     fn test_boolean_expressions() {
-        let tests = vec![CompilerTestCase {
-            input: "true; false".into(),
-            expected_constants: vec![],
-            expected_instructions: vec![
-                code::make(Op::True, None),
-                code::make(Op::Pop, None),
-                code::make(Op::False, None),
-                code::make(Op::Pop, None),
-            ],
-        }];
+        let tests = vec![
+            CompilerTestCase {
+                input: "true; false".into(),
+                expected_constants: vec![],
+                expected_instructions: vec![
+                    code::make(Op::True, None),
+                    code::make(Op::Pop, None),
+                    code::make(Op::False, None),
+                    code::make(Op::Pop, None),
+                ],
+            },
+            CompilerTestCase {
+                input: "1 > 2".into(),
+                expected_constants: vec![Object::Integer(1), Object::Integer(2)],
+                expected_instructions: vec![
+                    code::make(Op::Constant, Some(&[0])),
+                    code::make(Op::Constant, Some(&[1])),
+                    code::make(Op::GreaterThan, None),
+                    code::make(Op::Pop, None),
+                ],
+            },
+            CompilerTestCase {
+                input: "1 < 2".into(),
+                expected_constants: vec![Object::Integer(2), Object::Integer(1)],
+                expected_instructions: vec![
+                    code::make(Op::Constant, Some(&[0])),
+                    code::make(Op::Constant, Some(&[1])),
+                    code::make(Op::GreaterThan, None),
+                    code::make(Op::Pop, None),
+                ],
+            },
+            CompilerTestCase {
+                input: "1 == 2".into(),
+                expected_constants: vec![Object::Integer(1), Object::Integer(2)],
+                expected_instructions: vec![
+                    code::make(Op::Constant, Some(&[0])),
+                    code::make(Op::Constant, Some(&[1])),
+                    code::make(Op::Equal, None),
+                    code::make(Op::Pop, None),
+                ],
+            },
+            CompilerTestCase {
+                input: "1 != 2".into(),
+                expected_constants: vec![Object::Integer(1), Object::Integer(2)],
+                expected_instructions: vec![
+                    code::make(Op::Constant, Some(&[0])),
+                    code::make(Op::Constant, Some(&[1])),
+                    code::make(Op::NotEqual, None),
+                    code::make(Op::Pop, None),
+                ],
+            },
+            CompilerTestCase {
+                input: "true == false".into(),
+                expected_constants: vec![],
+                expected_instructions: vec![
+                    code::make(Op::True, None),
+                    code::make(Op::False, None),
+                    code::make(Op::Equal, None),
+                    code::make(Op::Pop, None),
+                ],
+            },
+            CompilerTestCase {
+                input: "true != false".into(),
+                expected_constants: vec![],
+                expected_instructions: vec![
+                    code::make(Op::True, None),
+                    code::make(Op::False, None),
+                    code::make(Op::NotEqual, None),
+                    code::make(Op::Pop, None),
+                ],
+            },
+            CompilerTestCase {
+                input: "!true".into(),
+                expected_constants: vec![],
+                expected_instructions: vec![
+                    code::make(Op::True, None),
+                    code::make(Op::Bang, None),
+                    code::make(Op::Pop, None),
+                ],
+            },
+        ];
 
         run_compiler_tests(tests);
     }
