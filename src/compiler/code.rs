@@ -27,6 +27,21 @@ impl Instructions {
         let inner_vec = &mut self.0;
         inner_vec.extend(ins.0.iter());
     }
+
+    pub fn trim(&mut self, start: usize, end: usize) {
+        let inner_vec = &mut self.0;
+        *inner_vec = inner_vec[start..end].to_vec();
+    }
+
+    pub fn get_mut(&mut self, index: usize) -> Option<&mut u8> {
+        let inner_vec = &mut self.0;
+        inner_vec.get_mut(index)
+    }
+
+    pub fn get(&mut self, index: usize) -> Option<&u8> {
+        let inner_vec = &mut self.0;
+        inner_vec.get(index)
+    }
 }
 
 impl Index<usize> for Instructions {
@@ -93,7 +108,7 @@ impl FromIterator<u8> for Instructions {
 
 type Opcode = u8;
 
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Eq, PartialEq, Clone)]
 #[repr(u8)]
 pub enum Op {
     Constant,
@@ -109,6 +124,8 @@ pub enum Op {
     GreaterThan,
     Minus,
     Bang,
+    JumpNotTruthy,
+    Jump,
 }
 
 impl TryFrom<u8> for Op {
@@ -128,7 +145,9 @@ impl TryFrom<u8> for Op {
             10u8 => Ok(Op::GreaterThan),
             11u8 => Ok(Op::Minus),
             12u8 => Ok(Op::Bang),
-            _ => return Err(format!("OpCode doesn't exist: {}", value)),
+            13u8 => Ok(Op::JumpNotTruthy),
+            14u8 => Ok(Op::Jump),
+            _ => Err(format!("OpCode doesn't exist: {}", value)),
         }
     }
 }
@@ -149,6 +168,8 @@ impl Display for Op {
             Op::GreaterThan => write!(f, "OpGreaterThan"),
             Op::Minus => write!(f, "OpMinus"),
             Op::Bang => write!(f, "OpBang"),
+            Op::JumpNotTruthy => write!(f, "OpJumpNotTruthy"),
+            Op::Jump => write!(f, "OpJump"),
         }
     }
 }
@@ -183,6 +204,8 @@ impl Definition {
                 Op::GreaterThan => None,
                 Op::Minus => None,
                 Op::Bang => None,
+                Op::JumpNotTruthy => Some(vec![2]),
+                Op::Jump => Some(vec![2]),
             },
         }
     }

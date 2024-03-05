@@ -8,9 +8,18 @@ use super::{code, code::Instructions, code::Op};
 
 type R<T> = Result<T, String>;
 
+#[derive(Clone, Debug)]
+pub struct EmittedInstruction {
+    pub opcode: Op,
+    pub position: usize,
+}
+
+#[derive(Debug)]
 pub struct Compiler {
     instructions: Instructions,
     constants: Vec<Object>,
+    last_instruction: Option<EmittedInstruction>,
+    prev_instruction: Option<EmittedInstruction>,
 }
 
 impl Default for Compiler {
@@ -24,18 +33,26 @@ impl Compiler {
         Self {
             instructions: Instructions::new(),
             constants: vec![],
+            last_instruction: None,
+            prev_instruction: None,
         }
     }
 
     pub fn compile(&mut self, program: &Program) -> R<()> {
-        for stmt in &program.statements {
+        self.compile_statements(&program.statements)?;
+
+        Ok(())
+    }
+
+    pub fn compile_statements(&mut self, stmts: &[Statement]) -> R<()> {
+        for stmt in stmts {
             match stmt {
                 Statement::Expression { value } => {
                     self.compile_expression(value)?;
                     self.emit(Op::Pop, None);
                 }
                 _ => todo!(),
-            }
+            };
         }
 
         Ok(())
@@ -85,6 +102,25 @@ impl Compiler {
                     other => return Err(format!("Unknown prefix operator: {}", other)),
                 };
             }
+            Expression::If {
+                condition,
+                consequence,
+                alternative,
+            } => {
+                self.compile_expression(condition)?;
+
+                // Emit an `OpJumpNotTruthy` with a bogus value
+                let jump_not_truthy_pos = self.emit(Op::JumpNotTruthy, Some(&[9999]));
+                self.compile_statements(&consequence.statements)?;
+
+                if let Some(last_ins) = self.is_last_instruction_pop() {
+                    self.instructions.trim(0, last_ins.position);
+                    self.last_instruction = self.prev_instruction.take();
+                }
+
+                let after_consequences_pos = self.instructions.len();
+                self.change_operand(jump_not_truthy_pos, after_consequences_pos)?;
+            }
             e => todo!("Expression not supported: {}", e),
         }
 
@@ -104,15 +140,59 @@ impl Compiler {
     }
 
     fn emit(&mut self, op: Op, operands: Option<&[usize]>) -> usize {
-        let ins = code::make(op, operands);
+        let ins = code::make(op.clone(), operands);
+        let pos = self.add_instruction(ins);
 
-        self.add_instruction(ins)
+        self.set_last_instruction(op, pos);
+        pos
     }
 
     fn add_instruction(&mut self, ins: Instructions) -> usize {
         let pos = self.instructions.len();
         self.instructions.append(ins);
         pos
+    }
+
+    fn set_last_instruction(&mut self, op: Op, pos: usize) {
+        self.prev_instruction = self.last_instruction.take();
+        self.last_instruction = Some(EmittedInstruction {
+            position: pos,
+            opcode: op,
+        })
+    }
+
+    fn is_last_instruction_pop(&self) -> Option<&EmittedInstruction> {
+        if let Some(ins) = &self.last_instruction {
+            if ins.opcode == Op::Pop {
+                return self.last_instruction.as_ref();
+            }
+        }
+
+        None
+    }
+
+    fn replace_instruction(&mut self, pos: usize, new_instruction: Instructions) -> R<()> {
+        for i in 0..new_instruction.len() {
+            self.instructions
+                .get_mut(pos + i)
+                .map(|ins| *ins = new_instruction[i]);
+        }
+
+        Ok(())
+    }
+
+    fn change_operand(&mut self, op_pos: usize, operand: usize) -> R<()> {
+        let op: Op = self
+            .instructions
+            .get(op_pos)
+            .unwrap()
+            .to_owned()
+            .try_into()?;
+        let new_instruction = code::make(op, Some(&[operand]));
+
+        self.replace_instruction(op_pos, new_instruction)?;
+
+        Ok(())
     }
 }
 
@@ -319,6 +399,24 @@ mod test_compiler {
                 ],
             },
         ];
+
+        run_compiler_tests(tests);
+    }
+
+    #[test]
+    fn test_conditionals() {
+        let tests = vec![CompilerTestCase {
+            input: "if (true) { 10 }; 3333".into(),
+            expected_constants: vec![Object::Integer(10), Object::Integer(3333)],
+            expected_instructions: vec![
+                code::make(Op::True, None),                // 0000
+                code::make(Op::JumpNotTruthy, Some(&[7])), // 0001
+                code::make(Op::Constant, Some(&[0])),      // 0004
+                code::make(Op::Pop, None),                 // 0007
+                code::make(Op::Constant, Some(&[1])),      // 0008
+                code::make(Op::Pop, None),                 // 0011
+            ],
+        }];
 
         run_compiler_tests(tests);
     }
