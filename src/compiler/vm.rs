@@ -109,6 +109,7 @@ impl Vm {
         Ok(match operand {
             TRUE => self.push(FALSE)?,
             FALSE => self.push(TRUE)?,
+            NULL => self.push(TRUE)?,
             _ => self.push(FALSE)?,
         })
     }
@@ -145,6 +146,20 @@ impl Vm {
                 op @ (Op::GreaterThan | Op::Equal | Op::NotEqual) => self.execute_comparison(op)?,
                 Op::Bang => self.execute_bang_operator()?,
                 Op::Minus => self.execute_minus_operator()?,
+                Op::Jump => {
+                    let pos = BigEndian::read_u16(&self.instructions[ip + 1..]) as usize;
+                    ip = pos - 1;
+                }
+                Op::JumpNotTruthy => {
+                    let pos = BigEndian::read_u16(&self.instructions[ip + 1..]) as usize;
+                    ip += 2;
+
+                    let condition = self.pop()?;
+                    if !self.is_truthy(condition) {
+                        ip = pos - 1;
+                    }
+                }
+                Op::Null => self.push(NULL)?,
                 _ => todo!(),
             }
 
@@ -152,6 +167,14 @@ impl Vm {
         }
 
         Ok(())
+    }
+
+    fn is_truthy(&self, obj: Object) -> bool {
+        match obj {
+            Object::Boolean(b) => b,
+            Object::Null => false,
+            _ => true,
+        }
     }
 }
 
@@ -373,6 +396,58 @@ mod test_vm {
             VmTestCase {
                 input: "!!5",
                 expected: TRUE,
+            },
+            VmTestCase {
+                input: "!(if (false) { 5; })",
+                expected: TRUE,
+            },
+        ];
+
+        run_vm_tests(tests);
+    }
+
+    #[test]
+    fn test_conditionals() {
+        let tests = vec![
+            VmTestCase {
+                input: "if (true) { 10 }",
+                expected: Object::Integer(10),
+            },
+            VmTestCase {
+                input: "if (true) { 10 } else { 20 }",
+                expected: Object::Integer(10),
+            },
+            VmTestCase {
+                input: "if (false) { 10 } else { 20 } ",
+                expected: Object::Integer(20),
+            },
+            VmTestCase {
+                input: "if (1) { 10 }",
+                expected: Object::Integer(10),
+            },
+            VmTestCase {
+                input: "if (1 < 2) { 10 }",
+                expected: Object::Integer(10),
+            },
+            VmTestCase {
+                input: "if (1 < 2) { 10 } else { 20 }",
+                expected: Object::Integer(10),
+            },
+            VmTestCase {
+                input: "if (1 > 2) { 10 } else { 20 }",
+                expected: Object::Integer(20),
+            },
+            VmTestCase {
+                input: "if (1 > 2) { 10 }",
+                expected: NULL,
+            },
+            VmTestCase {
+                input: "if (false) { 10 }",
+                expected: NULL,
+            },
+            VmTestCase {
+                input: "if ((if (false) { 10 })) { 10 } else { 20 }",
+                expected: Object::Integer(20),
             },
         ];
 

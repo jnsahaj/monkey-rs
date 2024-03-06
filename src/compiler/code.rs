@@ -126,6 +126,7 @@ pub enum Op {
     Bang,
     JumpNotTruthy,
     Jump,
+    Null,
 }
 
 impl TryFrom<u8> for Op {
@@ -147,6 +148,7 @@ impl TryFrom<u8> for Op {
             12u8 => Ok(Op::Bang),
             13u8 => Ok(Op::JumpNotTruthy),
             14u8 => Ok(Op::Jump),
+            15u8 => Ok(Op::Null),
             _ => Err(format!("OpCode doesn't exist: {}", value)),
         }
     }
@@ -170,6 +172,7 @@ impl Display for Op {
             Op::Bang => write!(f, "OpBang"),
             Op::JumpNotTruthy => write!(f, "OpJumpNotTruthy"),
             Op::Jump => write!(f, "OpJump"),
+            Op::Null => write!(f, "OpNull"),
         }
     }
 }
@@ -206,6 +209,7 @@ impl Definition {
                 Op::Bang => None,
                 Op::JumpNotTruthy => Some(vec![2]),
                 Op::Jump => Some(vec![2]),
+                Op::Null => None,
             },
         }
     }

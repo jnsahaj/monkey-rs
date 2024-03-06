@@ -115,23 +115,22 @@ impl Compiler {
 
                 self.check_and_remove_last_pop_instruction();
 
+                let jump_pos = self.emit(Op::Jump, Some(&[9999]));
+                let after_consequences_pos = self.instructions.len();
+                self.change_operand(jump_not_truthy_pos, after_consequences_pos)?;
+
                 match alternative {
                     Some(alt) => {
-                        let jump_pos = self.emit(Op::Jump, Some(&[9999]));
-                        let after_consequences_pos = self.instructions.len();
-                        self.change_operand(jump_not_truthy_pos, after_consequences_pos)?;
-
                         self.compile_statements(&alt.statements)?;
                         self.check_and_remove_last_pop_instruction();
-
-                        let after_alternative_pos = self.instructions.len();
-                        self.change_operand(jump_pos, after_alternative_pos)?;
                     }
                     _ => {
-                        let after_consequences_pos = self.instructions.len();
-                        self.change_operand(jump_not_truthy_pos, after_consequences_pos)?;
+                        self.emit(Op::Null, None);
                     }
                 }
+
+                let after_alternative_pos = self.instructions.len();
+                self.change_operand(jump_pos, after_alternative_pos)?;
             }
             e => todo!("Expression not supported: {}", e),
         }
@@ -429,12 +428,14 @@ mod test_compiler {
                 input: "if (true) { 10 }; 3333".into(),
                 expected_constants: vec![Object::Integer(10), Object::Integer(3333)],
                 expected_instructions: vec![
-                    code::make(Op::True, None),                // 0000
-                    code::make(Op::JumpNotTruthy, Some(&[7])), // 0001
-                    code::make(Op::Constant, Some(&[0])),      // 0004
-                    code::make(Op::Pop, None),                 // 0007
-                    code::make(Op::Constant, Some(&[1])),      // 0008
-                    code::make(Op::Pop, None),                 // 0011
+                    code::make(Op::True, None),                 // 0000
+                    code::make(Op::JumpNotTruthy, Some(&[10])), // 0001
+                    code::make(Op::Constant, Some(&[0])),       // 0004
+                    code::make(Op::Jump, Some(&[11])),          // 0007
+                    code::make(Op::Null, None),                 // 0010
+                    code::make(Op::Pop, None),                  // 0011
+                    code::make(Op::Constant, Some(&[1])),       // 0012
+                    code::make(Op::Pop, None),                  // 0015
                 ],
             },
             CompilerTestCase {
